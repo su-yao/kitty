@@ -43,13 +43,14 @@ class DefaultTxtExportPathsTest {
         )
         assertEquals(null, DefaultBookExportPaths.migrateCachedPath(null))
         assertEquals("", DefaultBookExportPaths.migrateCachedPath(""))
+        assertEquals("原TXT", DefaultBookExportPaths.migrateCachedPath("原TXT"))
     }
 
     @Test
-    fun `epub export skips image audio video and pdf books`() {
-        val source = readProjectFile("src/main/java/io/legado/app/help/book/DefaultBookExportPaths.kt")
+    fun `epub export skips image audio video pdf and web file books`() {
+        val source = readProjectFile("src/main/java/io/legado/app/help/book/BookExtensions.kt")
         assertTrue(source.contains("val Book.canExportEpub: Boolean"))
-        assertTrue(source.contains("!isAudio && !isVideo && !isImage && !isPdf"))
+        assertTrue(source.contains("!isAudio && !isVideo && !isImage && !isPdf && !isWebFile"))
     }
 
     private fun readProjectFile(pathInApp: String): String =

@@ -27,8 +27,12 @@ class TxtExportActionsTest {
         assertTrue(activity.contains("DefaultBookExportPaths.sanitized()"))
         assertTrue(activity.contains("DefaultBookExportPaths.original()"))
         assertTrue(activity.contains("DefaultBookExportPaths.migrateCachedPath"))
+        assertTrue(activity.contains("FileUtils.createFolderIfNotExist(cached)"))
         assertTrue(activity.contains("putExtra(\"exportUseReplace\", sanitized)"))
         assertTrue(activity.contains("putExtra(\"exportType\", \"txt_epub\")"))
+        assertTrue(adapter.contains("tvExport.setOnClickListener"))
+        assertTrue(adapter.contains("callBack.exportOptions(holder.layoutPosition, it)"))
+        assertFalse(activity.contains("if (book.isLocal) return"))
 
         assertTrue(menu.contains("android:id=\"@+id/menu_export_all_sanitized_txt\""))
         assertTrue(menu.contains("android:id=\"@+id/menu_download_all_original_txt\""))

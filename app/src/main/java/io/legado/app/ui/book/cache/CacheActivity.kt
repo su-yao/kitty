@@ -411,11 +411,15 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
     private fun prepareExportPath(sanitized: Boolean): String {
         val cacheKey = if (sanitized) sanitizedExportPathKey else originalExportPathKey
         val cached = DefaultBookExportPaths.migrateCachedPath(ACache.get().getAsString(cacheKey))
-        val cachedWritable = !cached.isNullOrEmpty() &&
-            runCatching { FileDoc.fromDir(cached).checkWrite() }.getOrDefault(false)
-        if (cachedWritable) {
-            ACache.get().put(cacheKey, cached)
-            return cached
+        if (!cached.isNullOrEmpty()) {
+            val ready = runCatching {
+                FileUtils.createFolderIfNotExist(cached)
+                FileDoc.fromDir(cached).checkWrite()
+            }.getOrDefault(false)
+            if (ready) {
+                ACache.get().put(cacheKey, cached)
+                return cached
+            }
         }
         val path = if (sanitized) {
             DefaultBookExportPaths.sanitized()

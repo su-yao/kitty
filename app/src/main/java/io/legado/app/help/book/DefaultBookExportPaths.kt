@@ -19,10 +19,9 @@ object DefaultBookExportPaths {
     fun migrateCachedPath(cached: String?): String? {
         if (cached.isNullOrEmpty()) return cached
         val file = File(cached)
-        if (file.name == LEGACY_ORIGINAL_DIR_NAME) {
-            return File(file.parentFile, ORIGINAL_DIR_NAME).absolutePath
-        }
-        return cached
+        if (file.name != LEGACY_ORIGINAL_DIR_NAME) return cached
+        val parent = file.parentFile ?: return cached
+        return File(parent, ORIGINAL_DIR_NAME).absolutePath
     }
 
     private fun path(dirName: String): String {
@@ -32,6 +31,3 @@ object DefaultBookExportPaths {
 
     private const val LEGACY_ORIGINAL_DIR_NAME = "原TXT"
 }
-
-val Book.canExportEpub: Boolean
-    get() = !isAudio && !isVideo && !isImage && !isPdf
