@@ -14,14 +14,18 @@ class TxtExportActionsTest {
         val menu = readProjectFile(CACHE_MENU)
         val service = readProjectFile(EXPORT_SERVICE)
 
-        assertTrue(adapter.contains("fun exportOptions(position: Int, anchor: View)"))
-        assertTrue(adapter.contains("callBack.exportOptions(holder.layoutPosition, it)"))
-        assertFalse(adapter.contains("fun export(position: Int)"))
+        assertTrue(adapter.contains("fun export(position: Int)"))
+        assertTrue(adapter.contains("fun exportSanitized(position: Int)"))
+        assertTrue(adapter.contains("fun exportOriginal(position: Int)"))
+        assertTrue(adapter.contains("callBack.exportSanitized(holder.layoutPosition)"))
+        assertTrue(adapter.contains("callBack.exportOriginal(holder.layoutPosition)"))
+        assertTrue(adapter.contains("callBack.export(holder.layoutPosition)"))
+        assertFalse(adapter.contains("fun exportOptions(position: Int, anchor: View)"))
 
-        assertTrue(activity.contains("item(getString(R.string.export_sanitized_txt), \"sanitized\")"))
-        assertTrue(activity.contains("item(getString(R.string.download_original_txt), \"original\")"))
-        assertTrue(activity.contains("\"sanitized\" -> exportBooks(position, sanitized = true)"))
-        assertTrue(activity.contains("\"original\" -> exportBooks(position, sanitized = false)"))
+        assertTrue(activity.contains("override fun exportSanitized(position: Int)"))
+        assertTrue(activity.contains("override fun exportOriginal(position: Int)"))
+        assertTrue(activity.contains("exportBooks(position, sanitized = true)"))
+        assertTrue(activity.contains("exportBooks(position, sanitized = false)"))
         assertTrue(activity.contains("R.id.menu_export_all_sanitized_txt -> exportAllBooks(sanitized = true)"))
         assertTrue(activity.contains("R.id.menu_download_all_original_txt -> exportAllBooks(sanitized = false)"))
         assertTrue(activity.contains("DefaultBookExportPaths.sanitized()"))
@@ -30,12 +34,29 @@ class TxtExportActionsTest {
         assertTrue(activity.contains("FileUtils.createFolderIfNotExist(cached)"))
         assertTrue(activity.contains("putExtra(\"exportUseReplace\", sanitized)"))
         assertTrue(activity.contains("putExtra(\"exportType\", \"txt_epub\")"))
+        assertTrue(adapter.contains("tvExportSanitized.setOnClickListener"))
+        assertTrue(adapter.contains("tvExportOriginal.setOnClickListener"))
         assertTrue(adapter.contains("tvExport.setOnClickListener"))
-        assertTrue(adapter.contains("callBack.exportOptions(holder.layoutPosition, it)"))
         assertFalse(activity.contains("if (book.isLocal) return"))
+
+        val itemLayout = readProjectFile(CACHE_ITEM)
+        assertTrue(itemLayout.contains("android:id=\"@+id/tv_export_sanitized\""))
+        assertTrue(itemLayout.contains("android:id=\"@+id/tv_export_original\""))
+        assertTrue(itemLayout.contains("android:id=\"@+id/tv_export\""))
+        assertTrue(itemLayout.contains("@string/export_sanitized_short"))
+        assertTrue(itemLayout.contains("@string/download_original_short"))
 
         assertTrue(menu.contains("android:id=\"@+id/menu_export_all_sanitized_txt\""))
         assertTrue(menu.contains("android:id=\"@+id/menu_download_all_original_txt\""))
+
+        val bookshelfMenu = readProjectFile(BOOKSHELF_MENU)
+        assertTrue(bookshelfMenu.contains("android:id=\"@+id/menu_download\""))
+        assertTrue(bookshelfMenu.contains("@string/cache_export"))
+        assertTrue(
+            Regex(
+                """android:id="@\+id/menu_download"[\s\S]*?app:showAsAction="always""""
+            ).containsMatchIn(bookshelfMenu)
+        )
 
         assertTrue(service.contains("val useReplace: Boolean? = null"))
         assertTrue(service.contains("\"txt\" -> exportTxt(exportConfig.path, book, exportConfig.useReplace)"))
@@ -61,6 +82,8 @@ class TxtExportActionsTest {
         const val CACHE_ACTIVITY = "src/main/java/io/legado/app/ui/book/cache/CacheActivity.kt"
         const val CACHE_ADAPTER = "src/main/java/io/legado/app/ui/book/cache/CacheAdapter.kt"
         const val CACHE_MENU = "src/main/res/menu/book_cache.xml"
+        const val CACHE_ITEM = "src/main/res/layout/item_download.xml"
+        const val BOOKSHELF_MENU = "src/main/res/menu/main_bookshelf.xml"
         const val EXPORT_SERVICE = "src/main/java/io/legado/app/service/ExportBookService.kt"
     }
 }

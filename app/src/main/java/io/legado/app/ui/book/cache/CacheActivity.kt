@@ -341,21 +341,7 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
         }
     }
 
-    override fun exportOptions(position: Int, anchor: View) {
-        popupActionMenu(this) {
-            item(getString(R.string.export), "export")
-            item(getString(R.string.export_sanitized_txt), "sanitized")
-            item(getString(R.string.download_original_txt), "original")
-        }.show(anchor) { action ->
-            when (action) {
-                "export" -> export(position)
-                "sanitized" -> exportBooks(position, sanitized = true)
-                "original" -> exportBooks(position, sanitized = false)
-            }
-        }
-    }
-
-    private fun export(position: Int) {
+    override fun export(position: Int) {
         val path = ACache.get().getAsString(exportBookPathKey)
         lifecycleScope.launch {
             if (path.isNullOrEmpty() ||
@@ -377,6 +363,14 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
         } else {
             startExport(path, -10)
         }
+    }
+
+    override fun exportSanitized(position: Int) {
+        exportBooks(position, sanitized = true)
+    }
+
+    override fun exportOriginal(position: Int) {
+        exportBooks(position, sanitized = false)
     }
 
     private fun exportBooks(position: Int, sanitized: Boolean) {

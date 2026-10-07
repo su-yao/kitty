@@ -888,7 +888,9 @@
     <string name="unknown_error">lỗi không xác định</string>
     <string name="export_no_chapter_name">Không xuất tên chương</string>
     <string name="export_sanitized_txt">Xuất TXT/EPUB đã lọc</string>
+    <string name="export_sanitized_short">Đã lọc</string>
     <string name="download_original_txt">Tải TXT/EPUB gốc</string>
+    <string name="download_original_short">Gốc</string>
     <string name="export_all_sanitized_txt">Xuất tất cả TXT/EPUB đã lọc</string>
     <string name="download_all_original_txt">Tải tất cả TXT/EPUB gốc</string>
     <string name="autobackup_fail">Tự động sao lưu thất bại\n%s</string>

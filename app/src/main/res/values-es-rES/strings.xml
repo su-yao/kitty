@@ -891,7 +891,9 @@
     <string name="check_source_show_debug_message_summary">Muestra los pasos y el tiempo de la solicitud de red durante la verificación de la fuente del libro</string>
     <string name="export_no_chapter_name">No export chapter names</string>
     <string name="export_sanitized_txt">Exportar TXT/EPUB depurado</string>
+    <string name="export_sanitized_short">Depurado</string>
     <string name="download_original_txt">Descargar TXT/EPUB original</string>
+    <string name="download_original_short">Original</string>
     <string name="export_all_sanitized_txt">Exportar todos los TXT/EPUB depurados</string>
     <string name="download_all_original_txt">Descargar todos los TXT/EPUB originales</string>
     <string name="autobackup_fail">Autobackup failed\n%s</string>

@@ -954,7 +954,9 @@
     <string name="unknown_error">未知錯誤</string>
     <string name="export_no_chapter_name">TXT不導出章節名</string>
     <string name="export_sanitized_txt">導出淨化 TXT/EPUB</string>
+    <string name="export_sanitized_short">淨化</string>
     <string name="download_original_txt">下載原始 TXT/EPUB</string>
+    <string name="download_original_short">原始</string>
     <string name="export_all_sanitized_txt">導出所有淨化 TXT/EPUB</string>
     <string name="download_all_original_txt">下載所有原始 TXT/EPUB</string>
     <string name="end">end</string>

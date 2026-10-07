@@ -1,7 +1,6 @@
 package io.legado.app.ui.book.cache
 
 import android.content.Context
-import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.ProgressBar
@@ -91,8 +90,14 @@ class CacheAdapter(context: Context, private val callBack: CallBack) :
                     }
                 }
             }
+            tvExportSanitized.setOnClickListener {
+                callBack.exportSanitized(holder.layoutPosition)
+            }
+            tvExportOriginal.setOnClickListener {
+                callBack.exportOriginal(holder.layoutPosition)
+            }
             tvExport.setOnClickListener {
-                callBack.exportOptions(holder.layoutPosition, it)
+                callBack.export(holder.layoutPosition)
             }
         }
     }
@@ -133,7 +138,9 @@ class CacheAdapter(context: Context, private val callBack: CallBack) :
 
     interface CallBack {
         val cacheChapters: HashMap<String, HashSet<String>>
-        fun exportOptions(position: Int, anchor: View)
+        fun export(position: Int)
+        fun exportSanitized(position: Int)
+        fun exportOriginal(position: Int)
         fun exportProgress(bookUrl: String): Int?
         fun exportMsg(bookUrl: String): String?
     }

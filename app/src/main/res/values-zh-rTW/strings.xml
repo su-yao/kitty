@@ -911,7 +911,9 @@
     <string name="export_charset">匯出編碼</string>
     <string name="export_no_chapter_name">TXT不匯出章節名</string>
     <string name="export_sanitized_txt">匯出淨化 TXT/EPUB</string>
+    <string name="export_sanitized_short">淨化</string>
     <string name="download_original_txt">下載原始 TXT/EPUB</string>
+    <string name="download_original_short">原始</string>
     <string name="export_all_sanitized_txt">匯出所有淨化 TXT/EPUB</string>
     <string name="download_all_original_txt">下載所有原始 TXT/EPUB</string>
     <string name="export_to_web_dav">匯出到WebDav</string>

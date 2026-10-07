@@ -887,7 +887,9 @@
     <string name="unknown_error">未知错误</string>
     <string name="export_no_chapter_name">No export chapter names</string>
     <string name="export_sanitized_txt">Export purified TXT/EPUB</string>
+    <string name="export_sanitized_short">Purified</string>
     <string name="download_original_txt">Download original TXT/EPUB</string>
+    <string name="download_original_short">Original</string>
     <string name="export_all_sanitized_txt">Export all purified TXT/EPUB</string>
     <string name="download_all_original_txt">Download all original TXT/EPUB</string>
     <string name="end">end</string>
