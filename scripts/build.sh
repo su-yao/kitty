@@ -9,6 +9,9 @@ mkdir -p dist/windows dist/linux cmd/setup/payload
 echo "running tests"
 go test ./internal/catalog ./internal/scan ./cmd/setup
 
+echo "sync web assets"
+cp web/index.html web/app.css web/app.js cmd/panel/web/
+
 echo "linux panel (preview)"
 go build -o dist/linux/StellarisConsolePanel ./cmd/panel
 

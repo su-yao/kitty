@@ -38,24 +38,35 @@ var megaSkip = map[string]bool{
 }
 
 func GameVersion(root string) string {
+	if root == "" {
+		return ""
+	}
 	cands := []string{
 		filepath.Join(root, "launcher-settings.json"),
+		filepath.Join(root, "README.txt"),
 		filepath.Join(root, "checksum_manifest.txt"),
-		filepath.Join(root, "stellaris.exe"),
 	}
 	for _, p := range cands {
+		if st, err := os.Stat(p); err != nil || st.IsDir() || st.Size() > 1<<20 {
+			continue
+		}
 		b, err := os.ReadFile(p)
 		if err != nil {
 			continue
 		}
-		s := string(b)
-		if m := reVersion.FindStringSubmatch(s); len(m) > 1 {
-			v := m[1]
-			if strings.Count(v, ".") == 1 {
-				v += ".0"
-			}
-			return v
+		m := reVersion.FindStringSubmatch(string(b))
+		if len(m) < 2 {
+			continue
 		}
+		major, _, _ := strings.Cut(m[1], ".")
+		if major != "3" && major != "4" {
+			continue
+		}
+		v := m[1]
+		if strings.Count(v, ".") == 1 {
+			v += ".0"
+		}
+		return v
 	}
 	return ""
 }

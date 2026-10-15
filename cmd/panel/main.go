@@ -81,12 +81,19 @@ func main() {
 	}
 }
 
+func (a *App) snapSettings() Settings {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.set
+}
+
 func (a *App) meta(w http.ResponseWriter, _ *http.Request) {
+	s := a.snapSettings()
 	writeJSON(w, map[string]any{
 		"categories":      catalog.Categories,
 		"versions":        catalog.Versions,
-		"default_version": or(a.set.Version, "4.4.6"),
-		"settings":        a.set,
+		"default_version": or(s.Version, "4.4.6"),
+		"settings":        s,
 		"scanned":         a.store.ScannedCount(),
 	})
 }
@@ -119,7 +126,7 @@ func (a *App) sendCmd(w http.ResponseWriter, r *http.Request) {
 	}
 	key := body.ConsoleKey
 	if key == "" {
-		key = a.set.ConsoleKey
+		key = a.snapSettings().ConsoleKey
 	}
 	err := send.Send(body.Command, send.Options{ConsoleKey: key, DelayMS: 180, SkipOpen: body.SkipOpen})
 	if err != nil {
@@ -138,7 +145,7 @@ func (a *App) openConsole(w http.ResponseWriter, r *http.Request) {
 	}
 	key := body.ConsoleKey
 	if key == "" {
-		key = a.set.ConsoleKey
+		key = a.snapSettings().ConsoleKey
 	}
 	if err := send.OpenConsole(key); err != nil {
 		httpError(w, 500, err.Error())
@@ -148,9 +155,7 @@ func (a *App) openConsole(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) scanNow(w http.ResponseWriter, _ *http.Request) {
-	a.mu.Lock()
-	s := a.set
-	a.mu.Unlock()
+	s := a.snapSettings()
 	if s.GameRoot == "" {
 		httpError(w, 400, "请填写游戏根目录")
 		return
@@ -184,7 +189,7 @@ func (a *App) detect(w http.ResponseWriter, _ *http.Request) {
 
 func (a *App) settings(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		writeJSON(w, a.set)
+		writeJSON(w, a.snapSettings())
 		return
 	}
 	var s Settings
@@ -255,12 +260,12 @@ func openUI(url string) {
 	if runtime.GOOS == "windows" {
 		msedge := filepath.Join(os.Getenv("ProgramFiles(x86)"), "Microsoft", "Edge", "Application", "msedge.exe")
 		if _, err := os.Stat(msedge); err == nil {
-			_ = exec.Command(msedge, "--app="+url, "--window-size=1280,860").Start()
+			_ = exec.Command(msedge, "--app="+url, "--start-maximized", "--window-size=1600,900").Start()
 			return
 		}
 		chrome := filepath.Join(os.Getenv("ProgramFiles"), "Google", "Chrome", "Application", "chrome.exe")
 		if _, err := os.Stat(chrome); err == nil {
-			_ = exec.Command(chrome, "--app="+url, "--window-size=1280,860").Start()
+			_ = exec.Command(chrome, "--app="+url, "--start-maximized", "--window-size=1600,900").Start()
 			return
 		}
 		_ = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()

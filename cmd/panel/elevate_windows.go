@@ -22,7 +22,7 @@ func elevateIfNeeded() {
 	dir, _ := syscall.UTF16PtrFromString("")
 	var args *uint16
 	if len(os.Args) > 1 {
-		a, _ := syscall.UTF16PtrFromString(strings.Join(os.Args[1:], " "))
+		a, _ := syscall.UTF16PtrFromString(quoteArgs(os.Args[1:]))
 		args = a
 	}
 	shell32 := syscall.NewLazyDLL("shell32.dll")
@@ -38,4 +38,16 @@ func alreadyAdmin() bool {
 	proc := mod.NewProc("IsUserAnAdmin")
 	r, _, _ := proc.Call()
 	return r != 0
+}
+
+func quoteArgs(args []string) string {
+	parts := make([]string, len(args))
+	for i, a := range args {
+		if strings.ContainsAny(a, " \t") {
+			parts[i] = `"` + strings.ReplaceAll(a, `"`, `\"`) + `"`
+			continue
+		}
+		parts[i] = a
+	}
+	return strings.Join(parts, " ")
 }

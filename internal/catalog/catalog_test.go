@@ -45,6 +45,20 @@ func TestSearchCash(t *testing.T) {
 	}
 }
 
+func TestBuiltinIntegrity(t *testing.T) {
+	seen := map[string]bool{}
+	for _, e := range builtin() {
+		if e.NameZH == "" || e.Command == "" || e.Category == "" || e.Since == "" {
+			t.Fatalf("incomplete entry: %+v", e)
+		}
+		key := e.Category + "|" + e.Command
+		if seen[key] {
+			t.Fatalf("duplicate entry in category %s: %s", e.Category, e.Command)
+		}
+		seen[key] = true
+	}
+}
+
 func TestPagination(t *testing.T) {
 	s := New()
 	p1 := s.List("", "", "4.4.6", 1, 24)

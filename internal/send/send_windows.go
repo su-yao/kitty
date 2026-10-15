@@ -106,11 +106,13 @@ func Send(command string, opt Options) error {
 	if command == "" {
 		return errors.New("空命令")
 	}
-	hwnd, _, err := findStellaris()
+	hwnd, title, err := findStellaris()
 	if err != nil {
 		return err
 	}
-	_ = focus(hwnd)
+	if err := focus(hwnd); err != nil {
+		return fmt.Errorf("无法激活窗口 %s：%w", title, err)
+	}
 	d := time.Duration(opt.DelayMS) * time.Millisecond
 	if d < 150*time.Millisecond {
 		d = 200 * time.Millisecond

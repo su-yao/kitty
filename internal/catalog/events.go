@@ -30,7 +30,6 @@ func events() []Entry {
 		ev("地下种族链", "Subterranean", "colony.50", "3.0.0", ""),
 		ev("星球改造链", "Terraform Event", "colony.100", "3.0.0", ""),
 		e("完成全部特殊项目", "Finish special projects", "finish_special_projects", CatEvent, "3.0.0", ""),
-		e("完成当前研究", "Finish research", "finish_research", CatEvent, "3.0.0", ""),
 		e("完成首次接触", "Complete first contact", "complete_first_contact", CatEvent, "3.0.0", "选中接触"),
 		e("完成全部帝国焦点", "Complete focus tasks", "complete_focus_tasks", CatEvent, "3.8.0", ""),
 		e("局势进度 +100", "Situation +100", "effect add_situation_progress = 100", CatEvent, "3.0.0", "先选中局势"),
