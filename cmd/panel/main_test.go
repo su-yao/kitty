@@ -6,16 +6,22 @@ import (
 	"testing"
 )
 
-func TestLoopbackHost(t *testing.T) {
-	ok := []string{"127.0.0.1:8080", "localhost:1", "[::1]:100", "127.0.0.1", "localhost"}
+func TestAllowedHost(t *testing.T) {
+	ok := []string{
+		"127.0.0.1:8080", "localhost:1", "[::1]:100", "127.0.0.1", "localhost",
+		"8791-3204746d802354c7.monkeycode-ai.online",
+	}
 	for _, h := range ok {
-		if !loopbackHost(h) {
-			t.Fatalf("want loopback: %q", h)
+		if !allowedHost(h) {
+			t.Fatalf("want allow: %q", h)
 		}
 	}
-	bad := []string{"", "evil.com", "evil.com:80", "169.254.169.254", "10.0.0.1:80"}
+	bad := []string{
+		"", "evil.com", "evil.com:80", "169.254.169.254", "10.0.0.1:80",
+		"monkeycode-ai.online", "evilmonkeycode-ai.online", "x.monkeycode-ai.online.evil.com",
+	}
 	for _, h := range bad {
-		if loopbackHost(h) {
+		if allowedHost(h) {
 			t.Fatalf("want reject: %q", h)
 		}
 	}

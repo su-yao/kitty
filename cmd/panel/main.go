@@ -88,18 +88,23 @@ func die(err error) {
 	log.Fatal(err)
 }
 
-// localGuard rejects requests whose Host or Origin is not loopback. This
-// blocks DNS-rebinding and cross-site requests from reaching the keystroke
-// injection API on Windows.
+// previewHostSuffix is the trusted reverse-proxy domain used by the online
+// preview. Requests arriving through the proxy carry this domain in Host.
+const previewHostSuffix = ".monkeycode-ai.online"
+
+// localGuard rejects requests whose Host or Origin is neither loopback nor the
+// trusted preview domain. This blocks DNS-rebinding and cross-site requests
+// from reaching the keystroke injection API while still allowing the preview
+// proxy to forward requests.
 func localGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !loopbackHost(r.Host) {
+		if !allowedHost(r.Host) {
 			httpError(w, http.StatusForbidden, "invalid host")
 			return
 		}
 		if origin := r.Header.Get("Origin"); origin != "" {
 			u, err := url.Parse(origin)
-			if err != nil || !loopbackHost(u.Host) {
+			if err != nil || !allowedHost(u.Host) {
 				httpError(w, http.StatusForbidden, "invalid origin")
 				return
 			}
@@ -108,7 +113,7 @@ func localGuard(next http.Handler) http.Handler {
 	})
 }
 
-func loopbackHost(hostport string) bool {
+func allowedHost(hostport string) bool {
 	if hostport == "" {
 		return false
 	}
@@ -117,7 +122,10 @@ func loopbackHost(hostport string) bool {
 		host = h
 	}
 	host = strings.ToLower(strings.Trim(host, "[]"))
-	return host == "127.0.0.1" || host == "localhost" || host == "::1"
+	if host == "127.0.0.1" || host == "localhost" || host == "::1" {
+		return true
+	}
+	return strings.HasSuffix(host, previewHostSuffix)
 }
 
 func (a *App) snapSettings() Settings {
