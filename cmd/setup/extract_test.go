@@ -36,6 +36,16 @@ func TestParseArgsSilent(t *testing.T) {
 	}
 }
 
+func TestParseArgsQuotedDir(t *testing.T) {
+	old := os.Args
+	defer func() { os.Args = old }()
+	os.Args = []string{"setup", `/DIR="C:\Program Files\Panel"`}
+	opts := parseArgs()
+	if opts.Dest != `C:\Program Files\Panel` {
+		t.Fatalf("dir=%q", opts.Dest)
+	}
+}
+
 func TestParseArgsUninstall(t *testing.T) {
 	old := os.Args
 	defer func() { os.Args = old }()

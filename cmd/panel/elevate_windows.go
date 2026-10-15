@@ -31,6 +31,7 @@ func elevateIfNeeded() {
 	if r > 32 {
 		os.Exit(0)
 	}
+	notify("群星控制台面板", "未获得管理员权限。\n\n发往群星控制台的按键可能无效，建议右键以管理员身份运行。")
 }
 
 func alreadyAdmin() bool {

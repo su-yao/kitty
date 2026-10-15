@@ -83,13 +83,27 @@ func deleteUninstallKey() error {
 	return deleteRegKey(`SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\` + uninstallID)
 }
 
+func terminateApp() {
+	taskkill := filepath.Join(os.Getenv("SystemRoot"), "System32", "taskkill.exe")
+	if _, err := os.Stat(taskkill); err != nil {
+		taskkill = "taskkill.exe"
+	}
+	cmd := exec.Command(taskkill, "/F", "/IM", exeName)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	_ = cmd.Run()
+}
+
 func selfDelete(dest string) {
 	exe := filepath.Join(dest, "Uninstall.exe")
 	if _, err := os.Stat(exe); err != nil {
 		return
 	}
+	shell := os.Getenv("COMSPEC")
+	if shell == "" {
+		shell = "cmd.exe"
+	}
 	script := "ping -n 2 127.0.0.1 >nul & del /f /q \"" + exe + "\" & rmdir \"" + dest + "\" 2>nul"
-	cmd := exec.Command("cmd", "/c", script)
+	cmd := exec.Command(shell, "/c", script)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	_ = cmd.Start()
 }

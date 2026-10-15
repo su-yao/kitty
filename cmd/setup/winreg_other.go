@@ -20,6 +20,8 @@ func readInstallDir() (string, error) {
 	return "", errors.New("registry requires Windows")
 }
 
+func terminateApp() {}
+
 func selfDelete(dest string) {}
 
 func launchAdmin(exe string) error {

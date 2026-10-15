@@ -18,7 +18,7 @@ const (
 	appName      = "Stellaris Console Panel"
 	appNameZH    = "群星控制台面板"
 	appPublisher = "Stellaris Console Panel"
-	appVersion   = "1.1.1"
+	appVersion   = "1.1.2"
 	exeName      = "StellarisConsolePanel.exe"
 	uninstallID  = "StellarisConsolePanel"
 )
@@ -36,6 +36,7 @@ type installOpts struct {
 }
 
 func main() {
+	initConsole()
 	opts := parseArgs()
 	if opts.Uninstall {
 		elevateIfNeeded()
@@ -77,7 +78,7 @@ func parseArgs() installOpts {
 		default:
 			low := strings.ToLower(a)
 			if strings.HasPrefix(low, "/d=") || strings.HasPrefix(low, "/dir=") {
-				opts.Dest = a[strings.Index(a, "=")+1:]
+				opts.Dest = strings.Trim(a[strings.Index(a, "=")+1:], `"`)
 			}
 		}
 	}
@@ -230,6 +231,8 @@ func runUninstall(opts installOpts) error {
 			return nil
 		}
 	}
+	terminateApp()
+	time.Sleep(300 * time.Millisecond)
 	removeShortcut(startMenuDir(), appNameZH+".lnk")
 	removeShortcut(startMenuDir(), "卸载 "+appNameZH+".lnk")
 	removeShortcut(desktopDir(), appNameZH+".lnk")

@@ -7,11 +7,13 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -43,7 +45,7 @@ func main() {
 	mux := http.NewServeMux()
 	static, err := fs.Sub(webFS, "web")
 	if err != nil {
-		log.Fatal(err)
+		die(err)
 	}
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(static))))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +70,7 @@ func main() {
 	}
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatal(err)
+		die(err)
 	}
 	url := "http://" + ln.Addr().String() + "/"
 	go func() {
@@ -76,9 +78,46 @@ func main() {
 		openUI(url)
 	}()
 	log.Println("Stellaris Console Panel", url)
-	if err := http.Serve(ln, mux); err != nil {
-		log.Fatal(err)
+	if err := http.Serve(ln, localGuard(mux)); err != nil {
+		die(err)
 	}
+}
+
+func die(err error) {
+	notify("群星控制台面板", err.Error())
+	log.Fatal(err)
+}
+
+// localGuard rejects requests whose Host or Origin is not loopback. This
+// blocks DNS-rebinding and cross-site requests from reaching the keystroke
+// injection API on Windows.
+func localGuard(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !loopbackHost(r.Host) {
+			httpError(w, http.StatusForbidden, "invalid host")
+			return
+		}
+		if origin := r.Header.Get("Origin"); origin != "" {
+			u, err := url.Parse(origin)
+			if err != nil || !loopbackHost(u.Host) {
+				httpError(w, http.StatusForbidden, "invalid origin")
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func loopbackHost(hostport string) bool {
+	if hostport == "" {
+		return false
+	}
+	host := hostport
+	if h, _, err := net.SplitHostPort(hostport); err == nil {
+		host = h
+	}
+	host = strings.ToLower(strings.Trim(host, "[]"))
+	return host == "127.0.0.1" || host == "localhost" || host == "::1"
 }
 
 func (a *App) snapSettings() Settings {
@@ -276,4 +315,5 @@ func openUI(url string) {
 		return
 	}
 	log.Println("打开浏览器访问", url)
+	notify("群星控制台面板", "未找到浏览器，请手动打开：\n"+url)
 }

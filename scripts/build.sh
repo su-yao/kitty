@@ -7,7 +7,7 @@ cd "$ROOT"
 mkdir -p dist/windows dist/linux cmd/setup/payload
 
 echo "running tests"
-go test ./internal/catalog ./internal/scan ./cmd/setup
+go test ./...
 
 echo "sync web assets"
 cp web/index.html web/app.css web/app.js cmd/panel/web/
