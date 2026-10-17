@@ -51,7 +51,7 @@ func ships() []Entry {
 		ship("视界刺针", "Horizon Needle", "NAME_Horizon_Needle", "3.12.0", "宇宙创生"),
 		ship("圣骑士舰", "Paladin Ship", "NAME_Paladin", "4.4.0", "游牧/银河守护者"),
 		e("瞬间建造开关", "Instant Build", "instant_build", CatShip, "3.0.0", "对 AI 同样生效，用完关闭"),
-		e("瞬间移动开关", "Instant Move", "instant_move", CatShip, "3.0.0", ""),
+		e("瞬间移动开关", "Instant Move", "tweakergui instant_move", CatShip, "3.0.0", "舰船右键即瞬移"),
 		e("无敌开关", "Invincible", "invincible", CatShip, "3.0.0", "仅舰队"),
 		e("舰队受伤 1000", "Damage 1000", "damage 1000", CatShip, "3.0.0", "先选中舰队"),
 		e("摧毁选中舰队伤害", "Damage huge", "damage 100000000", CatShip, "3.0.0", ""),

@@ -18,7 +18,7 @@ const (
 	appName      = "Stellaris Console Panel"
 	appNameZH    = "群星控制台面板"
 	appPublisher = "Stellaris Console Panel"
-	appVersion   = "1.1.3"
+	appVersion   = "1.1.4"
 	exeName      = "StellarisConsolePanel.exe"
 	uninstallID  = "StellarisConsolePanel"
 )
