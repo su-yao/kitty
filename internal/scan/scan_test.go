@@ -19,6 +19,7 @@ func TestScanShipsAndMegas(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(locDir, "ships_l_simp_chinese.yml"), []byte(`
 l_simp_chinese:
  NAME_Synth_Queen_Titan:0 "女王泰坦"
+ giga.1234:0 "吉加事件"
 `), 0644)
 	_ = os.WriteFile(filepath.Join(shipDir, "demo.txt"), []byte(`
 my_design = {
@@ -74,6 +75,9 @@ country_event = {
 		}
 		if e.Command == "event giga.1234" {
 			foundEvt = true
+			if e.Since != "3.0.0" {
+				t.Fatalf("scanned entry should be visible on every version, got since=%q", e.Since)
+			}
 		}
 	}
 	if !foundShip || !foundMega || !foundEvt {
@@ -97,8 +101,11 @@ func TestKeepFilters(t *testing.T) {
 	if keepEvent("test.1", "") {
 		t.Fatal("test event")
 	}
-	if !keepEvent("giga.1234", "") {
-		t.Fatal("usable event")
+	if keepEvent("giga.1234", "") {
+		t.Fatal("event without a localised title should be dropped")
+	}
+	if !keepEvent("giga.1234", "吉加事件") {
+		t.Fatal("localised event should be kept")
 	}
 	if keepShip("NAME_Portrait_Dummy", "肖像", "corvette") {
 		t.Fatal("portrait ship")

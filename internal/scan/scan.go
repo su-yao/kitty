@@ -17,8 +17,13 @@ var (
 	reEventID  = regexp.MustCompile(`(?m)^\s*id\s*=\s*"?([A-Za-z0-9_.]+)"?`)
 	reLocName  = regexp.MustCompile(`(?m)^\s*([A-Za-z0-9_.]+):[0-9]*\s+"([^"]+)"`)
 	reVersion  = regexp.MustCompile(`(?i)([0-9]+\.[0-9]+(?:\.[0-9]+)?)`)
-	reEventOK  = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*\.[0-9]+$`)
+	reGameVer  = regexp.MustCompile(`(?i)"gameVersion"\s*:\s*"v?([0-9]+(?:\.[0-9]+){1,2})"`)
 )
+
+// maxTextFile caps how much of a single script or localisation file is read.
+// Some overhaul mods ship multi-megabyte generated files; reading them all into
+// memory during a scan can stall the panel.
+const maxTextFile = 8 << 20
 
 var junkSub = []string{
 	"background", "backdrop", "decorat", "ambient", "skybox", "sky_box",
@@ -35,40 +40,65 @@ var megaSkip = map[string]bool{
 	"construction_blocks": true, "upgrade": true, "on_build_complete": true,
 	"on_build_start": true, "triggered_planet_modifier": true, "planet_modifier": true,
 	"country_modifier": true, "bypass": true, "graphical_culture": true,
+	// Block keywords that also appear at the start of a line inside a real
+	// megastructure definition; without these the scanner emits fake entries.
+	"trigger": true, "effect": true, "modifier": true, "weight": true,
+	"ai_weight": true, "ai_build": true, "allow": true, "orbit": true,
+	"placement": true, "required_component": true, "component": true,
+	"production": true, "cost": true, "maintenance": true, "sections": true,
+	"valid": true, "is_megastructure": true, "is_orbital_ring": true,
+	"station": true, "starbase": true, "orbital_deposit": true,
 }
 
 func GameVersion(root string) string {
 	if root == "" {
 		return ""
 	}
+	// launcher-settings.json is authoritative: it carries an explicit
+	// "gameVersion" field instead of a loose version-looking string.
+	launcher := filepath.Join(root, "launcher-settings.json")
+	if b, err := readCapped(launcher, 1<<20); err == nil {
+		if m := reGameVer.FindStringSubmatch(string(b)); len(m) > 1 {
+			if v := normVersion(m[1]); v != "" {
+				return v
+			}
+		}
+	}
 	cands := []string{
-		filepath.Join(root, "launcher-settings.json"),
 		filepath.Join(root, "README.txt"),
 		filepath.Join(root, "checksum_manifest.txt"),
 	}
 	for _, p := range cands {
-		if st, err := os.Stat(p); err != nil || st.IsDir() || st.Size() > 1<<20 {
-			continue
-		}
-		b, err := os.ReadFile(p)
+		b, err := readCapped(p, 1<<20)
 		if err != nil {
 			continue
 		}
-		m := reVersion.FindStringSubmatch(string(b))
-		if len(m) < 2 {
-			continue
+		if m := reVersion.FindStringSubmatch(string(b)); len(m) > 1 {
+			if v := normVersion(m[1]); v != "" {
+				return v
+			}
 		}
-		major, _, _ := strings.Cut(m[1], ".")
-		if major != "3" && major != "4" {
-			continue
-		}
-		v := m[1]
-		if strings.Count(v, ".") == 1 {
-			v += ".0"
-		}
-		return v
 	}
 	return ""
+}
+
+func normVersion(v string) string {
+	major, _, _ := strings.Cut(v, ".")
+	if major != "3" && major != "4" {
+		return ""
+	}
+	if strings.Count(v, ".") == 1 {
+		v += ".0"
+	}
+	return v
+}
+
+func readCapped(path string, limit int64) ([]byte, error) {
+	st, err := os.Stat(path)
+	if err != nil || st.IsDir() || st.Size() > limit {
+		return nil, os.ErrNotExist
+	}
+	return os.ReadFile(path)
 }
 
 func Scan(gameRoot, workshopRoot, extraModRoot, version string) ([]catalog.Entry, error) {
@@ -95,6 +125,12 @@ func Scan(gameRoot, workshopRoot, extraModRoot, version string) ([]catalog.Entry
 func collectMods(workshop, extra string) []string {
 	var roots []string
 	seen := map[string]bool{}
+	// The extra path may point either at a folder of mods or at one mod
+	// directory itself.
+	if extra != "" && looksLikeMod(extra) {
+		seen[extra] = true
+		roots = append(roots, extra)
+	}
 	add := func(dir string) {
 		if dir == "" {
 			return
@@ -153,7 +189,7 @@ func walkText(root string, fn func(path string, data string)) {
 		if ext != ".txt" && ext != ".yml" && ext != ".mod" {
 			return nil
 		}
-		b, err := os.ReadFile(path)
+		b, err := readCapped(path, maxTextFile)
 		if err != nil {
 			return nil
 		}
@@ -172,16 +208,15 @@ func scanShips(root, source, version string, loc map[string]string) []catalog.En
 				continue
 			}
 			seen[name] = true
-			lo := m[0] - 240
-			if lo < 0 {
-				lo = 0
-			}
-			hi := m[1] + 360
+			// ship_size follows name inside the same design block, so only
+			// look forward. A backward window can pick up the previous
+			// design's size and misclassify this one.
+			hi := m[1] + 400
 			if hi > len(data) {
 				hi = len(data)
 			}
 			size := ""
-			if sm := reShipSize.FindStringSubmatch(data[lo:hi]); len(sm) > 1 {
+			if sm := reShipSize.FindStringSubmatch(data[m[1]:hi]); len(sm) > 1 {
 				size = sm[1]
 			}
 			zh := locPick(loc, name)
@@ -200,9 +235,9 @@ func scanShips(root, source, version string, loc map[string]string) []catalog.En
 				NameEN:   name,
 				Command:  "add_ship " + name,
 				Category: cat,
-				Since:    orVer(version),
+				Since:    "3.0.0",
 				Source:   source,
-				Note:     "扫描自 " + source,
+				Note:     scanNote(source, version),
 			})
 		}
 	})
@@ -238,9 +273,9 @@ func scanMegas(root, source, version string, loc map[string]string) []catalog.En
 				NameEN:   id,
 				Command:  "create_megastructure " + id,
 				Category: cat,
-				Since:    orVer(version),
+				Since:    "3.0.0",
 				Source:   source,
-				Note:     "扫描自 " + source,
+				Note:     scanNote(source, version),
 			})
 		}
 	})
@@ -260,16 +295,9 @@ func scanEvents(root, source, version string, loc map[string]string) []catalog.E
 				continue
 			}
 			seen[id] = true
-			zh := locPick(loc, id, id+".t", id+".title", id+".desc")
+			zh := locPick(loc, id, id+".t", id+".title")
 			if !keepEvent(id, zh) {
 				continue
-			}
-			if zh == "" || !hasHan(zh) {
-				if t := locPick(loc, id+".t", id+".title"); t != "" {
-					zh = t
-				} else {
-					zh = "事件 " + id
-				}
 			}
 			cat := catalog.CatEvent
 			if source != "vanilla" {
@@ -280,9 +308,9 @@ func scanEvents(root, source, version string, loc map[string]string) []catalog.E
 				NameEN:   id,
 				Command:  "event " + id,
 				Category: cat,
-				Since:    orVer(version),
+				Since:    "3.0.0",
 				Source:   source,
-				Note:     "扫描自 " + source,
+				Note:     scanNote(source, version),
 			})
 		}
 	})
@@ -393,10 +421,10 @@ func keepEvent(id, zh string) bool {
 	if strings.Contains(low, "test_event") || strings.Contains(low, "debug_event") {
 		return false
 	}
-	if hasHan(zh) {
-		return true
-	}
-	return reEventOK.MatchString(id)
+	// Only events with a real localised title are worth showing. Vanilla and
+	// mod event files contain thousands of internal IDs with no title; listing
+	// them as "事件 xxx" floods the panel with unreadable noise.
+	return zh != ""
 }
 
 func isJunk(s string) bool {
@@ -423,9 +451,9 @@ func prettyName(id string) string {
 	return id
 }
 
-func orVer(v string) string {
-	if v == "" {
-		return "3.0.0"
+func scanNote(source, version string) string {
+	if version == "" {
+		return "扫描自 " + source
 	}
-	return v
+	return "扫描自 " + source + "（游戏 " + version + "）"
 }

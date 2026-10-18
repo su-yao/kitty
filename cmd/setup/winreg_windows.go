@@ -65,17 +65,24 @@ func writeUninstallKey(dest, uninst string) error {
 	}
 	defer k.close()
 	size := estimateInstallSize(dest)
-	_ = k.setString("DisplayName", appNameZH+" ("+appName+")")
-	_ = k.setString("DisplayVersion", appVersion)
-	_ = k.setString("Publisher", appPublisher)
-	_ = k.setString("InstallLocation", dest)
-	_ = k.setString("UninstallString", `"`+uninst+`" /uninstall`)
-	_ = k.setString("QuietUninstallString", `"`+uninst+`" /uninstall /S`)
-	_ = k.setString("DisplayIcon", filepath.Join(dest, exeName))
-	_ = k.setDWORD("NoModify", 1)
-	_ = k.setDWORD("NoRepair", 1)
-	_ = k.setDWORD("EstimatedSize", uint32(size))
-	_ = k.setString("InstallDate", time.Now().Format("20060102"))
+	vals := []error{
+		k.setString("DisplayName", appNameZH+" ("+appName+")"),
+		k.setString("DisplayVersion", appVersion),
+		k.setString("Publisher", appPublisher),
+		k.setString("InstallLocation", dest),
+		k.setString("UninstallString", `"`+uninst+`" /uninstall`),
+		k.setString("QuietUninstallString", `"`+uninst+`" /uninstall /S`),
+		k.setString("DisplayIcon", filepath.Join(dest, exeName)),
+		k.setDWORD("NoModify", 1),
+		k.setDWORD("NoRepair", 1),
+		k.setDWORD("EstimatedSize", uint32(size)),
+		k.setString("InstallDate", time.Now().Format("20060102")),
+	}
+	for _, err := range vals {
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -102,7 +109,11 @@ func selfDelete(dest string) {
 	if shell == "" {
 		shell = "cmd.exe"
 	}
-	script := "ping -n 2 127.0.0.1 >nul & del /f /q \"" + exe + "\" & rmdir \"" + dest + "\" 2>nul"
+	// Non-recursive rmdir only removes an empty directory. A recursive delete
+	// would wipe unrelated files when the user installed into a shared folder
+	// such as D:\Games. The delay lets this process exit before its image is
+	// deleted.
+	script := "ping -n 3 127.0.0.1 >nul & del /f /q \"" + exe + "\" & rmdir \"" + dest + "\" 2>nul"
 	cmd := exec.Command(shell, "/c", script)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	_ = cmd.Start()

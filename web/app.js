@@ -8,6 +8,7 @@ const state = {
   rows: 5,
   profile: "27-2k",
   scale: 100,
+  sending: false,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -48,8 +49,13 @@ function fitGrid() {
   const gap = parseFloat(cs.getPropertyValue("--gap")) || 8;
   const w = Math.max(grid.clientWidth, 640);
   const h = Math.max(grid.clientHeight, 280);
-  const cols = Math.max(4, Math.floor((w + gap) / (min.w + gap)));
-  const rows = Math.max(3, Math.floor((h + gap) / (min.h + gap)));
+  let cols = Math.max(4, Math.floor((w + gap) / (min.w + gap)));
+  let rows = Math.max(3, Math.floor((h + gap) / (min.h + gap)));
+  // Keep the client page size identical to the server cap, otherwise the two
+  // sides disagree on page boundaries and items can repeat across pages.
+  const maxPage = 800;
+  while (cols * rows > maxPage && rows > 3) rows -= 1;
+  while (cols * rows > maxPage && cols > 4) cols -= 1;
   const pageSize = cols * rows;
   const changed = state.cols !== cols || state.rows !== rows || state.pageSize !== pageSize;
   state.cols = cols;
@@ -96,9 +102,14 @@ async function loadMeta() {
     if (c.id === state.category) b.classList.add("active");
     cats.appendChild(b);
   });
+  if (data.version) {
+    const foot = $("appVersion");
+    if (foot) foot.textContent = "v" + data.version;
+  }
   if (data.settings) {
     if (data.settings.game_root) $("gameRoot").value = data.settings.game_root;
     if (data.settings.workshop) $("workshop").value = data.settings.workshop;
+    if (data.settings.extra_mods) $("extraMods").value = data.settings.extra_mods;
     if (data.settings.console_key) $("consoleKey").value = data.settings.console_key;
   }
 }
@@ -115,6 +126,12 @@ async function loadList() {
   $("meta").textContent = `${info.label} ${info.scale}% · ${state.cols}×${state.rows} 平铺 ${state.pageSize} 键 · 版本 ${state.version} · 扫描 ${data.scanned || 0}`;
   const grid = $("grid");
   grid.innerHTML = "";
+  if (!(data.items || []).length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "没有匹配的命令，换个分类或关键词试试。";
+    grid.appendChild(empty);
+  }
   (data.items || []).forEach((item) => {
     const b = document.createElement("button");
     b.className = "cmd";
@@ -133,9 +150,14 @@ function escapeHtml(s) {
 }
 
 async function sendCmd(command, name) {
+  if (state.sending) {
+    setStatus("上一条命令还在发送，请稍候…", true);
+    return;
+  }
+  state.sending = true;
+  document.body.classList.add("busy");
   setStatus(`发送中：${name}`);
   try {
-    await saveSettings();
     const data = await api("/api/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -148,6 +170,9 @@ async function sendCmd(command, name) {
     setStatus(data.message || `已发送 ${command}`);
   } catch (err) {
     setStatus(err.message, true);
+  } finally {
+    state.sending = false;
+    document.body.classList.remove("busy");
   }
 }
 
@@ -158,6 +183,7 @@ async function saveSettings() {
     body: JSON.stringify({
       game_root: $("gameRoot").value.trim(),
       workshop: $("workshop").value.trim(),
+      extra_mods: $("extraMods").value.trim(),
       console_key: $("consoleKey").value,
       version: state.version,
     }),
@@ -174,22 +200,39 @@ $("cats").addEventListener("click", (ev) => {
 $("version").addEventListener("change", () => {
   state.version = $("version").value;
   state.page = 1;
+  scheduleSave();
   loadList().catch((e) => setStatus(e.message, true));
 });
+let searchTimer = 0;
 $("q").addEventListener("input", () => {
-  state.page = 1;
-  loadList().catch((e) => setStatus(e.message, true));
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    state.page = 1;
+    loadList().catch((e) => setStatus(e.message, true));
+  }, 220);
 });
+
+let saveTimer = 0;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveSettings().catch((e) => setStatus("设置保存失败: " + e.message, true));
+  }, 400);
+}
+["gameRoot", "workshop", "extraMods"].forEach((id) => {
+  $(id).addEventListener("input", scheduleSave);
+});
+$("consoleKey").addEventListener("change", scheduleSave);
 $("prev").addEventListener("click", () => {
   if (state.page > 1) {
     state.page -= 1;
-    loadList();
+    loadList().catch((e) => setStatus(e.message, true));
   }
 });
 $("next").addEventListener("click", () => {
   if (state.page < state.totalPages) {
     state.page += 1;
-    loadList();
+    loadList().catch((e) => setStatus(e.message, true));
   }
 });
 $("btnOpenConsole").addEventListener("click", async () => {
@@ -218,7 +261,11 @@ $("btnScan").addEventListener("click", async () => {
   setStatus("正在扫描游戏与 MOD…");
   try {
     await saveSettings();
-    const data = await api("/api/scan", { method: "POST" });
+    const data = await api("/api/scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
     setStatus(data.message || "扫描完成");
     state.page = 1;
     await loadList();

@@ -73,3 +73,59 @@ func TestPagination(t *testing.T) {
 		t.Fatal("page 1 and 2 identical")
 	}
 }
+
+func TestScannedSkipsBuiltinCommands(t *testing.T) {
+	s := New()
+	before := s.List("", "", "4.4.6", 1, 1).Total
+	s.ReplaceScanned([]Entry{
+		{NameZH: "重复战列舰", Command: "add_ship NAME_Battleship", Category: CatShip, Since: "3.0.0"},
+		{NameZH: "重复战列舰副本", Command: "add_ship NAME_Battleship", Category: CatMod, Since: "3.0.0"},
+		{NameZH: "新设计", Command: "add_ship NAME_New_Design", Category: CatMod, Since: "3.0.0"},
+	})
+	after := s.List("", "", "4.4.6", 1, 1).Total
+	if after != before+1 {
+		t.Fatalf("want exactly one new entry, before=%d after=%d", before, after)
+	}
+	if s.ScannedCount() != 1 {
+		t.Fatalf("want 1 scanned entry, got %d", s.ScannedCount())
+	}
+}
+
+func TestListSortsByCategoryOrder(t *testing.T) {
+	s := New()
+	page := s.List("", "", "4.4.6", 1, 500)
+	if len(page.Items) < 2 {
+		t.Fatal("not enough entries")
+	}
+	for i := 1; i < len(page.Items); i++ {
+		prev, cur := page.Items[i-1], page.Items[i]
+		if prev.Category == cur.Category {
+			continue
+		}
+		if catOrderOf(prev.Category) > catOrderOf(cur.Category) {
+			t.Fatalf("category order broken: %s before %s", prev.Category, cur.Category)
+		}
+	}
+}
+
+func TestBuiltinVersionsAndCategories(t *testing.T) {
+	knownVer := map[string]bool{}
+	for _, v := range Versions {
+		knownVer[v] = true
+	}
+	knownCat := map[string]bool{}
+	for _, c := range Categories {
+		knownCat[c.ID] = true
+	}
+	for _, e := range builtin() {
+		if !knownVer[e.Since] {
+			t.Fatalf("unknown since %q for %s", e.Since, e.Command)
+		}
+		if e.Until != "" && !knownVer[e.Until] {
+			t.Fatalf("unknown until %q for %s", e.Until, e.Command)
+		}
+		if !knownCat[e.Category] {
+			t.Fatalf("unknown category %q for %s", e.Category, e.Command)
+		}
+	}
+}

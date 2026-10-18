@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"encoding/json"
+	"errors"
 	"io/fs"
 	"log"
 	"net"
@@ -25,6 +26,9 @@ import (
 //go:embed all:web
 var webFS embed.FS
 
+// appVersion is injected at build time via -ldflags "-X main.appVersion=...".
+var appVersion = "dev"
+
 type Settings struct {
 	GameRoot   string `json:"game_root"`
 	Workshop   string `json:"workshop"`
@@ -37,11 +41,18 @@ type App struct {
 	store *catalog.Store
 	mu    sync.Mutex
 	set   Settings
+	// sendMu serializes keystroke injection. Two concurrent requests would
+	// interleave their keystrokes and corrupt both commands in the console.
+	sendMu sync.Mutex
 }
 
 func main() {
 	elevateIfNeeded()
-	app := &App{store: catalog.New(), set: loadSettings()}
+	if !singleInstance() {
+		notify("群星控制台面板", "面板已经在运行，请使用已打开的窗口。")
+		return
+	}
+	app := &App{store: catalog.New(), set: normalizeSettings(loadSettings())}
 	mux := http.NewServeMux()
 	static, err := fs.Sub(webFS, "web")
 	if err != nil {
@@ -78,7 +89,7 @@ func main() {
 		openUI(url)
 	}()
 	log.Println("Stellaris Console Panel", url)
-	if err := http.Serve(ln, localGuard(mux)); err != nil {
+	if err := http.Serve(ln, secureHeaders(localGuard(mux))); err != nil {
 		die(err)
 	}
 }
@@ -96,6 +107,16 @@ const previewHostSuffix = ".monkeycode-ai.online"
 // trusted preview domain. This blocks DNS-rebinding and cross-site requests
 // from reaching the keystroke injection API while still allowing the preview
 // proxy to forward requests.
+func secureHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("Referrer-Policy", "no-referrer")
+		h.Set("Content-Security-Policy", "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; frame-ancestors 'none'")
+		next.ServeHTTP(w, r)
+	})
+}
+
 func localGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !allowedHost(r.Host) {
@@ -109,8 +130,24 @@ func localGuard(next http.Handler) http.Handler {
 				return
 			}
 		}
+		// JSON-body endpoints accept JSON only. A cross-site HTML form cannot
+		// produce that content type, which closes the remaining CSRF gap for
+		// requests that arrive without an Origin header.
+		if r.Method == http.MethodPost && needsJSONBody(r.URL.Path) &&
+			!strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+			httpError(w, http.StatusUnsupportedMediaType, "content type must be application/json")
+			return
+		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func needsJSONBody(path string) bool {
+	switch path {
+	case "/api/send", "/api/open_console", "/api/settings", "/api/scan":
+		return true
+	}
+	return false
 }
 
 func allowedHost(hostport string) bool {
@@ -137,6 +174,7 @@ func (a *App) snapSettings() Settings {
 func (a *App) meta(w http.ResponseWriter, _ *http.Request) {
 	s := a.snapSettings()
 	writeJSON(w, map[string]any{
+		"version":         appVersion,
 		"categories":      catalog.Categories,
 		"versions":        catalog.Versions,
 		"default_version": or(s.Version, "4.4.6"),
@@ -167,7 +205,12 @@ func (a *App) sendCmd(w http.ResponseWriter, r *http.Request) {
 		ConsoleKey string `json:"console_key"`
 		SkipOpen   bool   `json:"skip_open"`
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 8<<10)
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		httpError(w, 400, err.Error())
+		return
+	}
+	if err := validateCommand(body.Command); err != nil {
 		httpError(w, 400, err.Error())
 		return
 	}
@@ -175,12 +218,31 @@ func (a *App) sendCmd(w http.ResponseWriter, r *http.Request) {
 	if key == "" {
 		key = a.snapSettings().ConsoleKey
 	}
+	if !validConsoleKey(key) {
+		key = "oem3"
+	}
+	a.sendMu.Lock()
 	err := send.Send(body.Command, send.Options{ConsoleKey: key, DelayMS: 180, SkipOpen: body.SkipOpen})
+	a.sendMu.Unlock()
 	if err != nil {
 		httpError(w, 500, err.Error())
 		return
 	}
 	writeJSON(w, map[string]any{"ok": true, "message": "已发送: " + body.Command})
+}
+
+func validateCommand(cmd string) error {
+	c := strings.TrimSpace(cmd)
+	if c == "" {
+		return errors.New("空命令")
+	}
+	if len(c) > 512 {
+		return errors.New("命令过长")
+	}
+	if strings.ContainsAny(c, "\r\n") {
+		return errors.New("命令不能包含换行")
+	}
+	return nil
 }
 
 func (a *App) openConsole(w http.ResponseWriter, r *http.Request) {
@@ -194,7 +256,13 @@ func (a *App) openConsole(w http.ResponseWriter, r *http.Request) {
 	if key == "" {
 		key = a.snapSettings().ConsoleKey
 	}
-	if err := send.OpenConsole(key); err != nil {
+	if !validConsoleKey(key) {
+		key = "oem3"
+	}
+	a.sendMu.Lock()
+	err := send.OpenConsole(key)
+	a.sendMu.Unlock()
+	if err != nil {
 		httpError(w, 500, err.Error())
 		return
 	}
@@ -203,8 +271,8 @@ func (a *App) openConsole(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) scanNow(w http.ResponseWriter, _ *http.Request) {
 	s := a.snapSettings()
-	if s.GameRoot == "" {
-		httpError(w, 400, "请填写游戏根目录")
+	if s.GameRoot == "" && s.Workshop == "" && s.ExtraMods == "" {
+		httpError(w, 400, "请至少填写游戏根目录或 MOD 目录")
 		return
 	}
 	ver := scan.GameVersion(s.GameRoot)
@@ -239,25 +307,67 @@ func (a *App) settings(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, a.snapSettings())
 		return
 	}
-	var s Settings
+	// Decode on top of the current values so omitted fields (for example
+	// extra_mods from an older client) are preserved instead of being wiped.
+	s := a.snapSettings()
+	r.Body = http.MaxBytesReader(w, r.Body, 32<<10)
 	if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
 		httpError(w, 400, err.Error())
+		return
+	}
+	s = normalizeSettings(s)
+	if err := saveSettings(s); err != nil {
+		httpError(w, 500, "保存设置失败: "+err.Error())
 		return
 	}
 	a.mu.Lock()
 	a.set = s
 	a.mu.Unlock()
-	_ = saveSettings(s)
 	writeJSON(w, map[string]any{"ok": true})
+}
+
+func normalizeSettings(s Settings) Settings {
+	trim := func(v string) string {
+		return strings.Trim(strings.TrimSpace(v), `"`)
+	}
+	s.GameRoot = trim(s.GameRoot)
+	s.Workshop = trim(s.Workshop)
+	s.ExtraMods = trim(s.ExtraMods)
+	if !validVersion(s.Version) {
+		s.Version = "4.4.6"
+	}
+	if !validConsoleKey(s.ConsoleKey) {
+		s.ConsoleKey = "oem3"
+	}
+	return s
+}
+
+func validVersion(v string) bool {
+	for _, item := range catalog.Versions {
+		if item == v {
+			return true
+		}
+	}
+	return false
+}
+
+func validConsoleKey(k string) bool {
+	switch strings.ToLower(strings.TrimSpace(k)) {
+	case "oem3", "~", "`", "tilde", "shift+2", "shift+3", "alt+21", "alt+2+1", "f12":
+		return true
+	}
+	return false
 }
 
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(v)
 }
 
 func httpError(w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
 }
@@ -293,7 +403,12 @@ func saveSettings(s Settings) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(configPath(), b, 0644)
+	path := configPath()
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, b, 0644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
 }
 
 func or(a, b string) string {

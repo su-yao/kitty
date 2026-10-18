@@ -18,10 +18,16 @@ const (
 	appName      = "Stellaris Console Panel"
 	appNameZH    = "群星控制台面板"
 	appPublisher = "Stellaris Console Panel"
-	appVersion   = "1.1.4"
 	exeName      = "StellarisConsolePanel.exe"
 	uninstallID  = "StellarisConsolePanel"
 )
+
+// appVersion can be overridden at build time with -X main.appVersion=...
+var appVersion = "1.2.0"
+
+// silentMode suppresses interactive "press enter" prompts, which would hang
+// unattended installs launched with /S.
+var silentMode bool
 
 //go:embed all:payload
 var payloadFS embed.FS
@@ -38,6 +44,7 @@ type installOpts struct {
 func main() {
 	initConsole()
 	opts := parseArgs()
+	silentMode = opts.Silent
 	if opts.Uninstall {
 		elevateIfNeeded()
 		if err := runUninstall(opts); err != nil {
@@ -103,7 +110,7 @@ func runWizard(opts installOpts) error {
 	fmt.Println("================================================")
 	fmt.Println()
 	fmt.Println("  本程序将安装到本地，并创建开始菜单与卸载项。")
-	fmt.Println("  安装完成后请以管理员身份运行主程序。")
+	fmt.Println("  主程序启动时会自动请求管理员权限。")
 	fmt.Println()
 	fmt.Print("按回车继续，或输入 Q 取消: ")
 	if quit(readLine(in)) {
@@ -111,12 +118,14 @@ func runWizard(opts installOpts) error {
 		return nil
 	}
 
-	opts.Dest = defaultDir()
+	if opts.Dest == "" {
+		opts.Dest = defaultDir()
+	}
 	fmt.Println()
 	fmt.Println("[1/3] 安装目录")
 	fmt.Printf("  默认: %s\n", opts.Dest)
 	fmt.Print("  新目录（回车使用默认）: ")
-	if s := strings.TrimSpace(readLine(in)); s != "" {
+	if s := strings.TrimSpace(strings.Trim(readLine(in), `"`)); s != "" {
 		opts.Dest = s
 	}
 
@@ -309,6 +318,11 @@ func desktopDir() string {
 }
 
 func copyFile(src, dst string) error {
+	if same, _ := filepath.Abs(src); same != "" {
+		if other, err := filepath.Abs(dst); err == nil && strings.EqualFold(same, other) {
+			return nil
+		}
+	}
 	in, err := os.Open(src)
 	if err != nil {
 		return err
@@ -362,7 +376,7 @@ func tryRemoveDir(dir string) error {
 
 func fail(err error) {
 	fmt.Println("安装失败:", err)
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" && !silentMode {
 		fmt.Print("按回车退出: ")
 		bufio.NewReader(os.Stdin).ReadString('\n')
 	}

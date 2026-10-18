@@ -40,6 +40,7 @@ var (
 	procCloseHandle                = kernel32.NewProc("CloseHandle")
 	procQueryFullProcessImageNameW = kernel32.NewProc("QueryFullProcessImageNameW")
 	procGlobalAlloc                = kernel32.NewProc("GlobalAlloc")
+	procGlobalFree                 = kernel32.NewProc("GlobalFree")
 	procGlobalLock                 = kernel32.NewProc("GlobalLock")
 	procGlobalUnlock               = kernel32.NewProc("GlobalUnlock")
 )
@@ -84,6 +85,16 @@ var usScan = map[rune]uint16{
 	',': 0x33, '.': 0x34, '/': 0x35, ' ': 0x39,
 }
 
+// usScanShift maps characters that require Shift on a US layout, so commands
+// containing braces or comparison operators can be typed directly instead of
+// falling back to the clipboard.
+var usScanShift = map[rune]uint16{
+	'~': 0x29, '!': 0x02, '@': 0x03, '#': 0x04, '$': 0x05, '%': 0x06,
+	'^': 0x07, '&': 0x08, '*': 0x09, '(': 0x0A, ')': 0x0B,
+	'_': 0x0C, '+': 0x0D, '{': 0x1A, '}': 0x1B, ':': 0x27, '"': 0x28,
+	'|': 0x2B, '<': 0x33, '>': 0x34, '?': 0x35,
+}
+
 type Options struct {
 	ConsoleKey string
 	DelayMS    int
@@ -122,8 +133,17 @@ func Send(command string, opt Options) error {
 		openConsole(opt.ConsoleKey)
 		time.Sleep(d)
 	}
-	if err := typeASCII(command); err != nil {
-		_ = pasteClipboard(command)
+	// Decide the transport before typing anything. Switching to the clipboard
+	// after a partial type would leave the already typed prefix in the console
+	// and append the whole command again.
+	if canTypeASCII(command) {
+		if err := typeASCII(command); err != nil {
+			return err
+		}
+	} else {
+		if err := pasteClipboard(command); err != nil {
+			return fmt.Errorf("无法输入该命令，且写入剪贴板失败: %w", err)
+		}
 	}
 	time.Sleep(60 * time.Millisecond)
 	tapScan(SC_ENTER)
@@ -252,9 +272,7 @@ func openConsole(key string) {
 	case "shift+3":
 		tapComboScan(SC_LSHIFT, SC_3)
 	case "alt+21", "alt+2+1":
-		tapComboScan(SC_LALT, SC_2)
-		time.Sleep(30 * time.Millisecond)
-		tapScan(SC_1)
+		tapComboScan2(SC_LALT, SC_2, SC_1)
 	case "f12":
 		tapScan(SC_F12)
 	default:
@@ -278,6 +296,20 @@ func tapScan(scan uint16) {
 	time.Sleep(18 * time.Millisecond)
 }
 
+func tapComboScan2(mod, k1, k2 uint16) {
+	sendScan(mod, false)
+	time.Sleep(12 * time.Millisecond)
+	sendScan(k1, false)
+	time.Sleep(18 * time.Millisecond)
+	sendScan(k1, true)
+	time.Sleep(12 * time.Millisecond)
+	sendScan(k2, false)
+	time.Sleep(18 * time.Millisecond)
+	sendScan(k2, true)
+	sendScan(mod, true)
+	time.Sleep(18 * time.Millisecond)
+}
+
 func tapComboScan(mod, key uint16) {
 	sendScan(mod, false)
 	time.Sleep(12 * time.Millisecond)
@@ -288,18 +320,37 @@ func tapComboScan(mod, key uint16) {
 	time.Sleep(18 * time.Millisecond)
 }
 
+func canTypeASCII(s string) bool {
+	for _, r := range s {
+		if _, ok := usScanShift[r]; ok {
+			continue
+		}
+		if r >= 'A' && r <= 'Z' {
+			_, ok := usScan[r-'A'+'a']
+			if !ok {
+				return false
+			}
+			continue
+		}
+		if _, ok := usScan[r]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
 func typeASCII(s string) error {
 	for _, r := range s {
+		if sc, ok := usScanShift[r]; ok {
+			tapComboScan(SC_LSHIFT, sc)
+			continue
+		}
 		if r >= 'A' && r <= 'Z' {
 			sc, ok := usScan[r-'A'+'a']
 			if !ok {
 				return fmt.Errorf("无法输入 %q", r)
 			}
 			tapComboScan(SC_LSHIFT, sc)
-			continue
-		}
-		if r == '_' {
-			tapComboScan(SC_LSHIFT, 0x0C)
 			continue
 		}
 		sc, ok := usScan[r]
@@ -336,6 +387,13 @@ func setClipboard(s string) error {
 	if h == 0 {
 		return err
 	}
+	// The clipboard owns the handle only after a successful SetClipboardData.
+	owned := false
+	defer func() {
+		if !owned {
+			procGlobalFree.Call(h)
+		}
+	}()
 	p, _, err := procGlobalLock.Call(h)
 	if p == 0 {
 		return err
@@ -355,5 +413,6 @@ func setClipboard(s string) error {
 	if r == 0 {
 		return err
 	}
+	owned = true
 	return nil
 }

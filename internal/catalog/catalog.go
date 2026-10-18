@@ -64,6 +64,14 @@ var Categories = []Category{
 	{CatMod, "MOD扫描", 12},
 }
 
+var catOrder = func() map[string]int {
+	m := make(map[string]int, len(Categories))
+	for _, c := range Categories {
+		m[c.ID] = c.Order
+	}
+	return m
+}()
+
 var Versions = []string{
 	"3.0.0", "3.1.0", "3.2.0", "3.3.0", "3.4.0", "3.5.0", "3.6.0", "3.7.0",
 	"3.8.0", "3.9.0", "3.10.0", "3.11.0", "3.12.0", "3.13.0", "3.14.0",
@@ -106,10 +114,16 @@ func makeID(e Entry) string {
 func (s *Store) ReplaceScanned(items []Entry) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	// Scanning the vanilla game re-discovers designs that are already in the
+	// built-in catalog. Skipping them keeps one button per real command.
+	builtinCmd := make(map[string]bool, len(s.vanilla))
+	for _, e := range s.vanilla {
+		builtinCmd[e.Command] = true
+	}
 	seen := map[string]bool{}
 	out := make([]Entry, 0, len(items))
 	for _, e := range items {
-		if e.Command == "" {
+		if e.Command == "" || builtinCmd[e.Command] {
 			continue
 		}
 		if e.Source == "" {
@@ -170,10 +184,10 @@ func (s *Store) List(category, query, version string, page, pageSize int) Page {
 		filtered = append(filtered, e)
 	}
 	sort.SliceStable(filtered, func(i, j int) bool {
-		if filtered[i].Category == filtered[j].Category {
-			return filtered[i].NameZH < filtered[j].NameZH
+		if filtered[i].Category != filtered[j].Category {
+			return catOrderOf(filtered[i].Category) < catOrderOf(filtered[j].Category)
 		}
-		return filtered[i].Category < filtered[j].Category
+		return filtered[i].NameZH < filtered[j].NameZH
 	})
 	total := len(filtered)
 	totalPages := total / pageSize
@@ -202,6 +216,13 @@ func (s *Store) List(category, query, version string, page, pageSize int) Page {
 		TotalPages: totalPages,
 		Category:   category,
 	}
+}
+
+func catOrderOf(id string) int {
+	if n, ok := catOrder[id]; ok {
+		return n
+	}
+	return len(catOrder) + 1
 }
 
 func inVersion(e Entry, version string) bool {
@@ -274,11 +295,6 @@ func e(zh, en, command, cat, since, note string) Entry {
 		Source:   "vanilla",
 		Note:     note,
 	}
-}
-
-func until(entry Entry, ver string) Entry {
-	entry.Until = ver
-	return entry
 }
 
 func builtin() []Entry {
