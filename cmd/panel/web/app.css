@@ -43,6 +43,7 @@ button:hover { border-color: var(--accent); }
   gap: var(--gap);
 }
 .cmd {
+  position: relative;
   text-align: left;
   min-width: 0;
   min-height: 0;
@@ -71,6 +72,14 @@ button:hover { border-color: var(--accent); }
   text-overflow: ellipsis;
 }
 .cmd small { display: none; }
+.cmd .tags { position: absolute; top: 3px; right: 4px; display: flex; gap: 3px; pointer-events: none; }
+.cmd .tag { font-style: normal; font-size: 9px; line-height: 1; padding: 2px 3px; border-radius: 3px; background: #23304a; color: #9fb6e0; }
+.cmd .tag.dlc { background: #3a2a1f; color: #e0b48d; }
+.cmd .tag.miss { background: #4a1f26; color: #f0a3ad; }
+.cmd.missing { border-color: #6d2a33; opacity: 0.75; }
+label.target { max-width: 120px; }
+label.check { flex-direction: row; align-items: center; gap: 5px; padding-bottom: 7px; white-space: nowrap; }
+label.check input { padding: 0; }
 .empty { grid-column: 1 / -1; grid-row: 1 / -1; color: var(--muted); font-size: 14px; display: grid; place-items: center; }
 body.busy .cmd { opacity: 0.55; pointer-events: none; }
 .pager { display: flex; justify-content: center; gap: 16px; align-items: center; padding: 8px; border-top: 1px solid var(--line); flex-shrink: 0; position: relative; }

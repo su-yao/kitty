@@ -129,3 +129,63 @@ func TestBuiltinVersionsAndCategories(t *testing.T) {
 		}
 	}
 }
+
+func TestHintsMarkMissing(t *testing.T) {
+	s := New()
+	s.SetHints(Hints{
+		EventScopes:     map[string]string{"crisis.105": "fleet"},
+		EventIDs:        map[string]bool{"crisis.105": true, "crisis.199": true},
+		DesignNames:     map[string]bool{"NAME_Titan": true},
+		EventsVerified:  true,
+		DesignsVerified: true,
+	})
+	page := s.List(CatEvent, "虫群女王万岁", "4.4.6", 1, 10)
+	if page.Total != 1 || page.Items[0].Missing {
+		t.Fatalf("known event should stay available: %+v", page.Items)
+	}
+	if page.Items[0].Scope != "fleet" {
+		t.Fatalf("scope should come from game files, got %q", page.Items[0].Scope)
+	}
+	page = s.List(CatEvent, "异次元入侵者", "4.4.6", 1, 10)
+	if page.Total != 1 || !page.Items[0].Missing {
+		t.Fatal("unknown event id should be marked missing")
+	}
+	page = s.List(CatShip, "泰坦", "4.4.6", 1, 50)
+	for _, e := range page.Items {
+		if e.Command == "add_ship NAME_Titan" && e.Missing {
+			t.Fatal("known design should stay available")
+		}
+		if e.Command == "add_ship NAME_Colossus" && !e.Missing {
+			t.Fatal("unknown design should be marked missing")
+		}
+	}
+}
+
+func TestListFilteredHidesMissing(t *testing.T) {
+	s := New()
+	s.SetHints(Hints{EventIDs: map[string]bool{"crisis.199": true}, EventsVerified: true})
+	all := s.List(CatEvent, "", "4.4.6", 1, 800)
+	shown := s.ListFiltered(CatEvent, "", "4.4.6", 1, 800, true)
+	if shown.Total >= all.Total {
+		t.Fatalf("hide_missing should drop rows: %d vs %d", shown.Total, all.Total)
+	}
+	for _, e := range shown.Items {
+		if e.Missing {
+			t.Fatalf("missing entry leaked: %s", e.Command)
+		}
+	}
+}
+
+func TestEventScopesAreValid(t *testing.T) {
+	valid := map[string]bool{"": true, "country": true, "planet": true, "fleet": true, "ship": true,
+		"leader": true, "starbase": true, "first_contact": true, "system": true, "situation": true,
+		"selected": true}
+	for _, e := range events() {
+		if !valid[e.Scope] {
+			t.Fatalf("invalid scope %q for %s", e.Scope, e.Command)
+		}
+		if e.Target && e.Scope != "ship" {
+			t.Fatalf("target id is only used by ship events: %s", e.Command)
+		}
+	}
+}

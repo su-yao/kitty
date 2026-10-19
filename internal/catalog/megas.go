@@ -62,7 +62,7 @@ func megas() []Entry {
 		mega("突触凝练机", "Synaptic Lathe", "cosmogenesis_world_0", "3.12.0", "宇宙创生"),
 		mega("视界刺针巨构", "Horizon Needle Mega", "cosmogenesis_needle", "3.12.0", ""),
 		mega("虚境封印", "Shroud Seal", "shroud_seal", "3.12.0", ""),
-		mega("博物天枢", "Grand Archive", "grand_archive_0", "3.12.0", "寰宇博物 DLC"),
+		mega("博物天枢", "Grand Archive", "grand_archive_0", "3.14.0", "寰宇博物 DLC"),
 		mega("深空擎天堡 基址", "Deep Space Citadel", "deep_space_citadel_0", "3.14.0", ""),
 		mega("噬天巨兽卵", "Behemoth Egg", "behemoth_egg", "4.0.0", "万物竞发"),
 		mega("巨兽蛹", "Behemoth Chrysalis", "behemoth_chrysalis", "4.0.0", ""),

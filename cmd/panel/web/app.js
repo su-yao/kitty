@@ -9,6 +9,7 @@ const state = {
   profile: "27-2k",
   scale: 100,
   sending: false,
+  hideMissing: false,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -117,7 +118,8 @@ async function loadMeta() {
 async function loadList() {
   fitGrid();
   const q = encodeURIComponent($("q").value.trim());
-  const url = `/api/commands?category=${encodeURIComponent(state.category)}&q=${q}&version=${encodeURIComponent(state.version)}&page=${state.page}&page_size=${state.pageSize}`;
+  const hide = state.hideMissing ? "&hide_missing=1" : "";
+  const url = `/api/commands?category=${encodeURIComponent(state.category)}&q=${q}&version=${encodeURIComponent(state.version)}&page=${state.page}&page_size=${state.pageSize}${hide}`;
   const data = await api(url);
   state.page = data.page;
   state.totalPages = data.total_pages;
@@ -134,10 +136,17 @@ async function loadList() {
   }
   (data.items || []).forEach((item) => {
     const b = document.createElement("button");
-    b.className = "cmd";
-    b.title = `${item.name_zh}\n${item.command}\n${item.name_en || ""} ${item.note || ""}`.trim();
-    b.innerHTML = `<b>${escapeHtml(item.name_zh)}</b><code>${escapeHtml(item.command)}</code>`;
-    b.addEventListener("click", () => sendCmd(item.command, item.name_zh));
+    b.className = "cmd" + (item.missing ? " missing" : "");
+    b.title = [item.name_zh, item.command, scopeHint(item), item.dlc ? "需要 DLC: " + item.dlc : "",
+      item.missing ? "当前游戏文件中未找到该事件或设计" : "", item.name_en || "", item.note || ""]
+      .filter(Boolean).join("\n");
+    const tags = [];
+    if (item.scope && item.scope !== "country") tags.push(`<i class="tag">${scopeLabel(item.scope)}</i>`);
+    if (item.dlc) tags.push(`<i class="tag dlc">${escapeHtml(item.dlc)}</i>`);
+    if (item.missing) tags.push(`<i class="tag miss">未找到</i>`);
+    b.innerHTML = `<b>${escapeHtml(item.name_zh)}</b><code>${escapeHtml(item.command)}</code>` +
+      (tags.length ? `<span class="tags">${tags.join("")}</span>` : "");
+    b.addEventListener("click", () => sendCmd(item, item.name_zh));
     grid.appendChild(b);
   });
   document.querySelectorAll(".cats button").forEach((b) => {
@@ -149,11 +158,48 @@ function escapeHtml(s) {
   return String(s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-async function sendCmd(command, name) {
+const SCOPE_LABEL = {
+  planet: "选星球",
+  fleet: "选舰队",
+  ship: "选舰船",
+  leader: "选领袖",
+  starbase: "选恒星基地",
+  pop: "选人口",
+  first_contact: "选首次接触",
+  system: "选星系",
+  situation: "选局势",
+  selected: "先选目标",
+};
+
+function scopeLabel(scope) {
+  return SCOPE_LABEL[scope] || scope;
+}
+
+function scopeHint(item) {
+  if (item.scope && item.scope !== "country") {
+    const label = scopeLabel(item.scope);
+    return item.target ? `${label}，并填写目标 ID` : label;
+  }
+  return "";
+}
+
+function withTarget(command) {
+  const target = $("targetId").value.trim();
+  if (!/^\d+$/.test(target)) return command;
+  if (!command.startsWith("event ")) return command;
+  return `${command} ${target}`;
+}
+
+async function sendCmd(item, name) {
   if (state.sending) {
     setStatus("上一条命令还在发送，请稍候…", true);
     return;
   }
+  if (item.target && !/^\d+$/.test($("targetId").value.trim())) {
+    setStatus(`${name} 需要目标 ID：先按 debugtooltip 查看舰船 ID，再填入右上角「目标 ID」`, true);
+    return;
+  }
+  const command = withTarget(item.command);
   state.sending = true;
   document.body.classList.add("busy");
   setStatus(`发送中：${name}`);
@@ -223,6 +269,16 @@ function scheduleSave() {
   $(id).addEventListener("input", scheduleSave);
 });
 $("consoleKey").addEventListener("change", scheduleSave);
+$("targetId").addEventListener("input", () => {
+  if (state.category === "event" || state.category === "all") {
+    state.page = 1;
+  }
+});
+$("hideMissing").addEventListener("change", () => {
+  state.hideMissing = $("hideMissing").checked;
+  state.page = 1;
+  loadList().catch((e) => setStatus(e.message, true));
+});
 $("prev").addEventListener("click", () => {
   if (state.page > 1) {
     state.page -= 1;

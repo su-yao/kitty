@@ -17,6 +17,17 @@ type Entry struct {
 	Until    string `json:"until,omitempty"`
 	Source   string `json:"source"`
 	Note     string `json:"note,omitempty"`
+	// Scope is the object that must be selected before the command works:
+	// country, planet, fleet, ship, situation or first_contact.
+	Scope string `json:"scope,omitempty"`
+	// Target means the command needs an extra numeric target id, as ship
+	// events do: event <id> <target id>.
+	Target bool `json:"target,omitempty"`
+	// DLC names the required expansion, for example 天启 or 机械纪元.
+	DLC string `json:"dlc,omitempty"`
+	// Missing is set after a scan when the event id or ship design used by a
+	// built-in entry does not exist in the current game files.
+	Missing bool `json:"missing,omitempty"`
 }
 
 type Category struct {
@@ -78,10 +89,19 @@ var Versions = []string{
 	"4.0.0", "4.1.0", "4.2.0", "4.3.0", "4.4.0", "4.4.6", "4.5.0",
 }
 
+type Hints struct {
+	EventScopes     map[string]string
+	EventIDs        map[string]bool
+	DesignNames     map[string]bool
+	EventsVerified  bool
+	DesignsVerified bool
+}
+
 type Store struct {
 	mu      sync.RWMutex
 	vanilla []Entry
 	scanned []Entry
+	hints   Hints
 }
 
 func New() *Store {
@@ -109,6 +129,14 @@ func makeID(e Entry) string {
 	base = strings.ReplaceAll(base, " ", "-")
 	base = strings.ReplaceAll(base, "=", "-")
 	return strings.ToLower(base)
+}
+
+// SetHints records what the current game files contain, so built-in entries
+// can be marked as unavailable instead of silently doing nothing.
+func (s *Store) SetHints(h Hints) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.hints = h
 }
 
 func (s *Store) ReplaceScanned(items []Entry) {
@@ -153,6 +181,10 @@ func (s *Store) ScannedCount() int {
 }
 
 func (s *Store) List(category, query, version string, page, pageSize int) Page {
+	return s.ListFiltered(category, query, version, page, pageSize, false)
+}
+
+func (s *Store) ListFiltered(category, query, version string, page, pageSize int, hideMissing bool) Page {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if page < 1 {
@@ -169,6 +201,10 @@ func (s *Store) List(category, query, version string, page, pageSize int) Page {
 	items = append(items, s.scanned...)
 	filtered := make([]Entry, 0, len(items))
 	for _, e := range items {
+		e = s.decorate(e)
+		if hideMissing && e.Missing {
+			continue
+		}
 		if !inVersion(e, version) {
 			continue
 		}
@@ -216,6 +252,58 @@ func (s *Store) List(category, query, version string, page, pageSize int) Page {
 		TotalPages: totalPages,
 		Category:   category,
 	}
+}
+
+func (s *Store) decorate(e Entry) Entry {
+	if e.Source != "vanilla" {
+		return e
+	}
+	if e.Category == CatEvent {
+		if id, ok := eventID(e.Command); ok {
+			if sc, found := s.hints.EventScopes[id]; found {
+				e.Scope = sc
+			}
+			if s.hints.EventsVerified && !s.hints.EventIDs[id] {
+				e.Missing = true
+			}
+		}
+	}
+	if name, ok := shipDesign(e.Command); ok {
+		// add_ship places the new ship next to the selected object, so
+		// something must be selected first.
+		if e.Scope == "" {
+			e.Scope = "selected"
+		}
+		// Player-created designs are not in the game files, so only preset
+		// NAME_ designs can be verified.
+		if strings.HasPrefix(name, "NAME_") && s.hints.DesignsVerified &&
+			!s.hints.DesignNames[name] && !s.hints.DesignNames[strings.TrimPrefix(name, "NAME_")] {
+			e.Missing = true
+		}
+	}
+	return e
+}
+
+func eventID(command string) (string, bool) {
+	if !strings.HasPrefix(command, "event ") {
+		return "", false
+	}
+	f := strings.Fields(command)
+	if len(f) < 2 {
+		return "", false
+	}
+	return f[1], true
+}
+
+func shipDesign(command string) (string, bool) {
+	if !strings.HasPrefix(command, "add_ship ") {
+		return "", false
+	}
+	name := strings.TrimSpace(strings.TrimPrefix(command, "add_ship "))
+	if name == "" || strings.ContainsAny(name, " \t") {
+		return "", false
+	}
+	return name, true
 }
 
 func catOrderOf(id string) int {

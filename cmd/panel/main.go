@@ -187,7 +187,8 @@ func (a *App) commands(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	page, _ := strconv.Atoi(q.Get("page"))
 	size, _ := strconv.Atoi(q.Get("page_size"))
-	p := a.store.List(q.Get("category"), q.Get("q"), q.Get("version"), page, size)
+	hideMissing := q.Get("hide_missing") == "1"
+	p := a.store.ListFiltered(q.Get("category"), q.Get("q"), q.Get("version"), page, size, hideMissing)
 	writeJSON(w, map[string]any{
 		"items":       p.Items,
 		"total":       p.Total,
@@ -279,17 +280,28 @@ func (a *App) scanNow(w http.ResponseWriter, _ *http.Request) {
 	if ver == "" {
 		ver = s.Version
 	}
-	items, err := scan.Scan(s.GameRoot, s.Workshop, s.ExtraMods, ver)
+	report, err := scan.ScanReport(s.GameRoot, s.Workshop, s.ExtraMods, ver)
 	if err != nil {
 		httpError(w, 500, err.Error())
 		return
 	}
-	a.store.ReplaceScanned(items)
+	a.store.SetHints(catalog.Hints{
+		EventScopes:     report.EventScopes,
+		EventIDs:        report.EventIDs,
+		DesignNames:     report.DesignNames,
+		EventsVerified:  report.EventsVerified,
+		DesignsVerified: report.DesignsVerified,
+	})
+	a.store.ReplaceScanned(report.Entries)
+	missing := ""
+	if report.EventsVerified || report.DesignsVerified {
+		missing = "，可用性已按当前游戏文件校验"
+	}
 	writeJSON(w, map[string]any{
 		"ok":      true,
-		"count":   len(items),
+		"count":   len(report.Entries),
 		"version": ver,
-		"message": "扫描完成 " + strconv.Itoa(len(items)) + " 条，检测到版本 " + or(ver, "未知"),
+		"message": "扫描完成 " + strconv.Itoa(len(report.Entries)) + " 条，检测到版本 " + or(ver, "未知") + missing,
 	})
 }
 

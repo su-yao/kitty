@@ -40,6 +40,8 @@ Stellaris Console Panel 是一款 Windows 桌面工具。它收集《群星》�
 3. IF 未找到群星窗口, THE System SHALL 提示用户先启动游戏并保持非铁人模式
 4. WHEN 命令包含当前键盘布局无法直接键入的字符, THE System SHALL 整条改用剪贴板粘贴，避免重复输入
 5. WHEN 多个发送请求同时到达, THE System SHALL 串行执行，按键不得交错
+6. WHEN 命令需要选中对象或目标 ID, THE System SHALL 在按钮上标注前置条件
+7. WHEN 舰船事件缺少目标 ID, THE System SHALL 阻止发送并提示先获取舰船 ID
 
 ### Requirement 3
 
@@ -74,6 +76,8 @@ Stellaris Console Panel 是一款 Windows 桌面工具。它收集《群星》�
 4. WHEN 事件没有本地化标题, THE System SHALL 不展示该事件，避免出现无法辨认的内部 ID
 5. IF 扫描失败, THE System SHALL 保留内置命令库并显示失败原因
 6. WHEN 用户只填写 MOD 目录而未填写游戏根目录, THE System SHALL 仍允许扫描 MOD
+7. WHEN 扫描到游戏根目录, THE System SHALL 按事件文件的作用域标注星球/舰队/舰船事件，并校验内置事件 ID 与舰船设计是否存在
+8. WHEN 内置事件或舰船设计在当前游戏文件中不存在, THE System SHALL 标记为不可用并允许一键隐藏
 
 ### Requirement 6
 

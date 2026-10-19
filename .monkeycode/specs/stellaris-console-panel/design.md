@@ -1,7 +1,7 @@
 # Stellaris Console Panel
 
 Feature Name: stellaris-console-panel
-Updated: 2026-10-18
+Updated: 2026-10-19
 
 ## Description
 
@@ -49,6 +49,9 @@ graph TD
 - **发送串行化**：`/api/send` 与 `/api/open_console` 共用互斥锁，并发点击不会交错按键。
 - **前端分页**：每页数量在客户端按 `cols×rows` 计算并夹到服务端上限 800，两侧页边界保持一致。
 - **构建版本**：仓库根 `VERSION` 为单一事实来源，`build.sh` 通过 `-ldflags -X main.appVersion` 注入主程序与安装器。
+- **前置条件标注**：条目携带 `scope`、`target`、`dlc`。国家事件无需选中；星球、舰队、领袖、恒星基地、局势事件需先选中对应对象；舰船事件还需 `event <id> <target id>`，前端在缺少目标 ID 时直接拦截。
+- **舰船生成**：`add_ship` 在选中目标旁生成舰船，所有此类条目标注 `selected`。
+- **版本校验**：扫描游戏根目录时解析 `events/` 中的 `*_event` 作用域与 `common/global_ship_designs`、`common/ship_designs` 的设计名；内置事件 ID 或 `NAME_` 设计不存在时标为 `missing`，可用 `hide_missing=1` 过滤。仅扫描 MOD 时不校验内置条目。
 
 ## Correctness Properties
 
@@ -58,6 +61,8 @@ graph TD
 - 扫描失败不影响内置库
 - 并发发送请求串行执行，按键不会交错
 - 客户端与服务端页大小一致，翻页不重复也不跳条
+- 需要目标 ID 的舰船事件在未填写 ID 时不会发送
+- 版本校验只在内置条目的 ID/设计确实缺失时标记，避免误判玩家自定义设计
 
 ## Error Handling
 

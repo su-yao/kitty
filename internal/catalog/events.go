@@ -5,7 +5,7 @@ func ev(zh, en, id, since, note string) Entry {
 }
 
 func events() []Entry {
-	return []Entry{
+	list := []Entry{
 		ev("普雷索林虫群降临", "Prethoryn Scourge", "crisis.199", "3.0.0", "开启虫群天灾"),
 		ev("哨兵崛起", "Rise of the Sentinels", "crisis.50", "3.0.0", "不依赖天灾，含音效"),
 		ev("哨兵舰队捐赠", "Sentinel Fleet Donation", "crisis.71", "3.0.0", "不依赖天灾或哨兵"),
@@ -56,8 +56,8 @@ func events() []Entry {
 		ev("巨化进化", "Gargantuan Evolution", "distar.5012", "3.0.0", "击败虚空孳孽奖励"),
 		ev("石中低语", "Whispers in the Stone", "ancrel.4000", "3.0.0", "选中星球，生成考古遗址"),
 		ev("扎克兰的选民", "Zarqulan's Chosen", "ancrel.6130", "3.0.0", "可殖民圣地"),
-		ev("伊尼提亚商人", "Inetian Traders", "cstorms.195", "3.12.0", "解锁超空间细化器建筑"),
-		ev("原始呼唤姿态", "Primal Calling Stance", "grand_archive.1002", "3.12.0", "可解锁多个姿态建筑"),
+		ev("伊尼提亚商人", "Inetian Traders", "cstorms.195", "3.13.0", "解锁超空间细化器建筑"),
+		ev("原始呼唤姿态", "Primal Calling Stance", "grand_archive.1002", "3.14.0", "可解锁多个姿态建筑"),
 		ev("沃尔特劳姆母星", "Vultraum Home System", "precursor.98", "3.0.0", "生成先驱者母星系"),
 		ev("尤特母星", "Yuht Home System", "precursor.598", "3.0.0", ""),
 		ev("第一联盟母星", "First League Home System", "precursor.1098", "3.0.0", ""),
@@ -71,7 +71,7 @@ func events() []Entry {
 		ev("清算之日", "The Reckoning", "utopia.3320", "3.0.0", "需先接受上一条契约"),
 		ev("轮回终末(暗影)", "End of the Cycle (Shroud)", "shroud.4135", "4.3.0", "暗影之幕版本契约"),
 		ev("神经共生", "Neural Symbiosis", "distar.172", "3.0.0", "选中舰船，可获得脑蛞蝓特质"),
-		ev("虚空之虫瘟疫", "Voidworm Plague", "grand_archive.2300", "3.12.0", "先用 play 选中虚空之虫，否则帝国可能崩溃"),
+		ev("虚空之虫瘟疫", "Voidworm Plague", "grand_archive.2300", "3.14.0", "先用 play 选中虚空之虫，否则帝国可能崩溃"),
 		ev("破碎片段苏醒", "Shattered Fragments Awaken", "fallen_empires_awakening.10", "4.3.0", "需先用 play 选中破碎片段"),
 		ev("星系热症结局", "Galactic Hyperthermia", "infernals.1055", "4.1.0", "全恒星变红巨星，非嗜热帝国灭亡"),
 		ev("游牧天命", "Vindication", "nomads.610", "4.4.0", "可选择成为游牧部落"),
@@ -85,4 +85,32 @@ func events() []Entry {
 		e("结束选中局势", "Destroy situation", "effect destroy_situation = this", CatEvent, "3.0.0", ""),
 		e("摧毁选中舰队", "Destroy fleet", "effect destroy_fleet = this", CatEvent, "3.0.0", "先选中舰队"),
 	}
+	// Selection requirements verified against the in-game event scopes. The
+	// scanner overrides these when it can read the current game files.
+	type req struct {
+		scope  string
+		target bool
+	}
+	reqs := map[string]req{
+		"event crisis.105":      {"fleet", false},
+		"event graygoo.400":     {"fleet", false},
+		"event akx.8888":        {"ship", true},
+		"event distar.212":      {"fleet", false},
+		"event leviathans.3103": {"ship", true},
+		"event distar.172":      {"ship", true},
+		"event distar.260":      {"planet", false},
+		"event distar.1001":     {"planet", false},
+		"event distar.5006":     {"planet", false},
+		"event ancrel.4000":     {"planet", false},
+		"event ancrel.4058":     {"planet", false},
+		"event enclave.220":     {"planet", false},
+		"event anomaly.186":     {"planet", false},
+	}
+	for i := range list {
+		if r, ok := reqs[list[i].Command]; ok {
+			list[i].Scope = r.scope
+			list[i].Target = r.target
+		}
+	}
+	return list
 }

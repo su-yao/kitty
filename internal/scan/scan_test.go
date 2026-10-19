@@ -111,3 +111,63 @@ func TestKeepFilters(t *testing.T) {
 		t.Fatal("portrait ship")
 	}
 }
+
+func TestScanReportScopesAndDesigns(t *testing.T) {
+	root := t.TempDir()
+	evtDir := filepath.Join(root, "events")
+	locDir := filepath.Join(root, "localisation", "simp_chinese")
+	shipDir := filepath.Join(root, "common", "global_ship_designs")
+	for _, d := range []string{evtDir, locDir, shipDir} {
+		if err := os.MkdirAll(d, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_ = os.WriteFile(filepath.Join(locDir, "e.yml"), []byte(`
+l_simp_chinese:
+ test.1:0 "国家事件"
+ test.2:0 "星球事件"
+ test.3:0 "舰船事件"
+`), 0644)
+	_ = os.WriteFile(filepath.Join(evtDir, "demo.txt"), []byte(`
+country_event = {
+	id = test.1
+}
+planet_event = {
+	id = test.2
+}
+ship_event = {
+	id = test.3
+}
+`), 0644)
+	_ = os.WriteFile(filepath.Join(shipDir, "demo.txt"), []byte(`
+d1 = {
+	name = "NAME_Titan"
+	ship_size = titan
+}
+`), 0644)
+	r, err := ScanReport(root, "", "", "4.4.6")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !r.EventsVerified || !r.DesignsVerified {
+		t.Fatalf("expected verification, got %+v", r)
+	}
+	if r.EventScopes["test.1"] != "country" || r.EventScopes["test.2"] != "planet" || r.EventScopes["test.3"] != "ship" {
+		t.Fatalf("wrong scopes: %+v", r.EventScopes)
+	}
+	if !r.DesignNames["NAME_Titan"] {
+		t.Fatalf("missing design names: %+v", r.DesignNames)
+	}
+}
+
+func TestScanReportWithoutGameRoot(t *testing.T) {
+	mod := t.TempDir()
+	_ = os.MkdirAll(filepath.Join(mod, "events"), 0755)
+	r, err := ScanReport("", mod, "", "4.4.6")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.EventsVerified || r.DesignsVerified {
+		t.Fatal("mod-only scan must not verify vanilla entries")
+	}
+}

@@ -5,7 +5,7 @@ func ship(zh, en, name, since, note string) Entry {
 }
 
 func ships() []Entry {
-	return []Entry{
+	list := []Entry{
 		ship("建造舰", "Constructor", "NAME_Constructor", "3.0.0", "工程船"),
 		ship("科研船", "Science", "NAME_Science", "3.0.0", ""),
 		ship("殖民船", "Colony Ship", "NAME_Colony_Ship", "3.0.0", ""),
@@ -57,4 +57,23 @@ func ships() []Entry {
 		e("摧毁选中舰队伤害", "Damage huge", "damage 100000000", CatShip, "3.0.0", ""),
 		e("获得选中单位所有权", "Own selected", "own", CatShip, "3.0.0", "先左键选中舰队/星球"),
 	}
+	// DLC-locked designs still exist in the files but cannot be built or
+	// spawned without the matching expansion.
+	dlc := map[string]string{
+		"add_ship NAME_Colossus":                "天启",
+		"add_ship NAME_Titan":                   "天启",
+		"add_ship NAME_Juggernaut":              "联邦",
+		"add_ship NAME_Crisis_Star_Eater":       "复仇女神",
+		"add_ship NAME_Synth_Queen_Titan":       "机械纪元",
+		"add_ship NAME_Synth_Queen_Harrier":     "机械纪元",
+		"add_ship NAME_Synth_Queen_Royal_Guard": "机械纪元",
+		"add_ship NAME_Horizon_Needle":          "机械纪元",
+		"add_ship NAME_Paladin":                 "游牧",
+	}
+	for i := range list {
+		if d, ok := dlc[list[i].Command]; ok {
+			list[i].DLC = d
+		}
+	}
+	return list
 }

@@ -18,6 +18,9 @@ var (
 	reLocName  = regexp.MustCompile(`(?m)^\s*([A-Za-z0-9_.]+):[0-9]*\s+"([^"]+)"`)
 	reVersion  = regexp.MustCompile(`(?i)([0-9]+\.[0-9]+(?:\.[0-9]+)?)`)
 	reGameVer  = regexp.MustCompile(`(?i)"gameVersion"\s*:\s*"v?([0-9]+(?:\.[0-9]+){1,2})"`)
+	reEventDef = regexp.MustCompile(`\b([a-z_]+)_event\s*=\s*\{`)
+	reIDField  = regexp.MustCompile(`\bid\s*=\s*"?([A-Za-z0-9_.]+)"?`)
+	reAnyName  = regexp.MustCompile(`(?m)^\s*name\s*=\s*"?([A-Za-z0-9_]+)"?`)
 )
 
 // maxTextFile caps how much of a single script or localisation file is read.
@@ -101,7 +104,23 @@ func readCapped(path string, limit int64) ([]byte, error) {
 	return os.ReadFile(path)
 }
 
+// Report carries both the scanned entries and what the current game files
+// contain, so built-in entries can be checked against the installed version.
+type Report struct {
+	Entries         []catalog.Entry
+	EventScopes     map[string]string
+	EventIDs        map[string]bool
+	DesignNames     map[string]bool
+	EventsVerified  bool
+	DesignsVerified bool
+}
+
 func Scan(gameRoot, workshopRoot, extraModRoot, version string) ([]catalog.Entry, error) {
+	r, err := ScanReport(gameRoot, workshopRoot, extraModRoot, version)
+	return r.Entries, err
+}
+
+func ScanReport(gameRoot, workshopRoot, extraModRoot, version string) (Report, error) {
 	loc := map[string]string{}
 	mergeLoc(loc, loadLocNames(gameRoot))
 	var out []catalog.Entry
@@ -109,6 +128,22 @@ func Scan(gameRoot, workshopRoot, extraModRoot, version string) ([]catalog.Entry
 		out = append(out, scanShips(filepath.Join(gameRoot, "common", "global_ship_designs"), "vanilla", version, loc)...)
 		out = append(out, scanMegas(filepath.Join(gameRoot, "common", "megastructures"), "vanilla", version, loc)...)
 		out = append(out, scanEvents(filepath.Join(gameRoot, "events"), "vanilla", version, loc)...)
+	}
+	report := Report{
+		EventScopes: map[string]string{},
+		EventIDs:    map[string]bool{},
+		DesignNames: map[string]bool{},
+	}
+	if gameRoot != "" {
+		collectEventInfo(filepath.Join(gameRoot, "events"), report.EventScopes, report.EventIDs)
+		for _, dir := range []string{
+			filepath.Join(gameRoot, "common", "global_ship_designs"),
+			filepath.Join(gameRoot, "common", "ship_designs"),
+		} {
+			collectDesignNames(dir, report.DesignNames)
+		}
+		report.EventsVerified = len(report.EventIDs) > 0
+		report.DesignsVerified = len(report.DesignNames) > 0
 	}
 	modRoots := collectMods(workshopRoot, extraModRoot)
 	for _, root := range modRoots {
@@ -119,7 +154,59 @@ func Scan(gameRoot, workshopRoot, extraModRoot, version string) ([]catalog.Entry
 		out = append(out, scanEvents(filepath.Join(root, "events"), src, version, loc)...)
 		out = append(out, scanShips(filepath.Join(root, "common", "ship_designs"), src, version, loc)...)
 	}
-	return out, nil
+	report.Entries = out
+	return report, nil
+}
+
+func collectEventInfo(root string, scopes map[string]string, ids map[string]bool) {
+	walkText(root, func(_ string, data string) {
+		matches := reEventDef.FindAllStringSubmatchIndex(data, -1)
+		for i, m := range matches {
+			kind := data[m[2]:m[3]]
+			end := len(data)
+			if i+1 < len(matches) {
+				end = matches[i+1][0]
+			}
+			if end-m[1] > 4000 {
+				end = m[1] + 4000
+			}
+			idm := reIDField.FindStringSubmatch(data[m[1]:end])
+			if len(idm) < 2 {
+				continue
+			}
+			id := idm[1]
+			ids[id] = true
+			scopes[id] = eventScope(kind)
+		}
+	})
+}
+
+func eventScope(kind string) string {
+	switch kind {
+	case "planet", "pop", "army":
+		return "planet"
+	case "fleet":
+		return "fleet"
+	case "ship":
+		return "ship"
+	case "leader":
+		return "leader"
+	case "starbase":
+		return "starbase"
+	case "first_contact":
+		return "first_contact"
+	case "system":
+		return "system"
+	}
+	return "country"
+}
+
+func collectDesignNames(root string, names map[string]bool) {
+	walkText(root, func(_ string, data string) {
+		for _, m := range reAnyName.FindAllStringSubmatch(data, -1) {
+			names[m[1]] = true
+		}
+	})
 }
 
 func collectMods(workshop, extra string) []string {
