@@ -23,7 +23,7 @@ const (
 )
 
 // appVersion can be overridden at build time with -X main.appVersion=...
-var appVersion = "1.2.1"
+var appVersion = "1.2.2"
 
 // silentMode suppresses interactive "press enter" prompts, which would hang
 // unattended installs launched with /S.

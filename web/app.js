@@ -10,6 +10,7 @@ const state = {
   scale: 100,
   sending: false,
   hideMissing: false,
+  targetId: "0",
 };
 
 const $ = (id) => document.getElementById(id);
@@ -137,18 +138,19 @@ async function loadList() {
   (data.items || []).forEach((item) => {
     const b = document.createElement("button");
     b.className = "cmd" + (item.missing ? " missing" : "");
-    b.title = [item.name_zh, item.command, scopeHint(item), item.dlc ? "需要 DLC: " + item.dlc : "",
-      item.missing ? "当前游戏文件中未找到该事件或设计" : "", item.name_en || "", item.note || ""]
-      .filter(Boolean).join("\n");
     const tags = [];
     if (item.scope && item.scope !== "country") tags.push(`<i class="tag">${scopeLabel(item.scope)}</i>`);
     if (item.dlc) tags.push(`<i class="tag dlc">${escapeHtml(item.dlc)}</i>`);
     if (item.missing) tags.push(`<i class="tag miss">未找到</i>`);
-    b.innerHTML = `<b>${escapeHtml(item.name_zh)}</b><code>${escapeHtml(item.command)}</code>` +
+    b.innerHTML = `<b>${escapeHtml(item.name_zh)}</b><code>${escapeHtml(previewCommand(item))}</code>` +
       (tags.length ? `<span class="tags">${tags.join("")}</span>` : "");
     b.addEventListener("click", () => sendCmd(item, item.name_zh));
+    b.addEventListener("pointerenter", (ev) => showTip(ev, item));
+    b.addEventListener("pointermove", (ev) => moveTip(ev));
+    b.addEventListener("pointerleave", hideTip);
     grid.appendChild(b);
   });
+  refreshTargetOptions(data.items || []);
   document.querySelectorAll(".cats button").forEach((b) => {
     b.classList.toggle("active", b.dataset.id === state.category);
   });
@@ -175,19 +177,90 @@ function scopeLabel(scope) {
   return SCOPE_LABEL[scope] || scope;
 }
 
-function scopeHint(item) {
-  if (item.scope && item.scope !== "country") {
-    const label = scopeLabel(item.scope);
-    return item.target ? `${label}，并填写目标 ID` : label;
-  }
-  return "";
+function currentTargetId() {
+  const pick = $("targetPick").value;
+  if (pick === "custom") return $("targetId").value.trim();
+  return pick || "0";
 }
 
-function withTarget(command) {
-  const target = $("targetId").value.trim();
+function previewCommand(item) {
+  return withTarget(item.command, item);
+}
+
+function withTarget(command, item) {
+  const target = currentTargetId();
   if (!/^\d+$/.test(target)) return command;
-  if (!command.startsWith("event ")) return command;
-  return `${command} ${target}`;
+  if (item && item.target && command.startsWith("event ")) {
+    return `${command} ${target}`;
+  }
+  return command;
+}
+
+function targetSummary(item) {
+  const id = currentTargetId();
+  const opts = item.targets || [];
+  const hit = opts.find((t) => t.id === id);
+  const name = hit ? hit.label : (id === "0" ? "玩家" : "ID " + id);
+  return item.target_hint ? `${name}（${id}）。${item.target_hint}` : `${name}（${id}）`;
+}
+
+function showTip(ev, item) {
+  const tip = $("tip");
+  const cmd = previewCommand(item);
+  const bits = [
+    `<div class="tip-title">${escapeHtml(item.name_zh)}</div>`,
+    `<div class="tip-row"><span>目标</span>${escapeHtml(targetSummary(item))}</div>`,
+    `<div class="tip-row"><span>命令</span><code>${escapeHtml(cmd)}</code></div>`,
+  ];
+  if (item.lore) bits.push(`<div class="tip-lore">${escapeHtml(item.lore)}</div>`);
+  if (item.note && item.note !== item.lore) bits.push(`<div class="tip-note">${escapeHtml(item.note)}</div>`);
+  if (item.dlc) bits.push(`<div class="tip-note">需要 DLC：${escapeHtml(item.dlc)}</div>`);
+  if (item.missing) bits.push(`<div class="tip-note">当前游戏文件中未找到该事件或设计。</div>`);
+  if (item.name_en) bits.push(`<div class="tip-en">${escapeHtml(item.name_en)}</div>`);
+  tip.innerHTML = bits.join("");
+  tip.hidden = false;
+  moveTip(ev);
+}
+
+function moveTip(ev) {
+  const tip = $("tip");
+  if (tip.hidden) return;
+  const pad = 14;
+  const x = Math.min(ev.clientX + 16, window.innerWidth - tip.offsetWidth - pad);
+  const y = Math.min(ev.clientY + 18, window.innerHeight - tip.offsetHeight - pad);
+  tip.style.left = Math.max(pad, x) + "px";
+  tip.style.top = Math.max(pad, y) + "px";
+}
+
+function hideTip() {
+  $("tip").hidden = true;
+}
+
+function refreshTargetOptions(items) {
+  const sel = $("targetPick");
+  const prev = sel.value;
+  const seen = { "0": "玩家 (0)" };
+  items.forEach((item) => {
+    (item.targets || []).forEach((t) => {
+      if (!t || t.id == null) return;
+      if (!seen[t.id]) seen[t.id] = `${t.label || "目标"} (${t.id})`;
+    });
+  });
+  const ids = Object.keys(seen).sort((a, b) => Number(a) - Number(b));
+  sel.innerHTML = "";
+  ids.forEach((id) => {
+    const o = document.createElement("option");
+    o.value = id;
+    o.textContent = seen[id];
+    sel.appendChild(o);
+  });
+  const custom = document.createElement("option");
+  custom.value = "custom";
+  custom.textContent = "自定义 ID";
+  sel.appendChild(custom);
+  if (prev === "custom" || seen[prev]) sel.value = prev;
+  else sel.value = "0";
+  $("targetCustomWrap").hidden = sel.value !== "custom";
 }
 
 async function sendCmd(item, name) {
@@ -195,11 +268,11 @@ async function sendCmd(item, name) {
     setStatus("上一条命令还在发送，请稍候…", true);
     return;
   }
-  if (item.target && !/^\d+$/.test($("targetId").value.trim())) {
-    setStatus(`${name} 需要目标 ID：先按 debugtooltip 查看舰船 ID，再填入右上角「目标 ID」`, true);
+  if (item.target && !/^\d+$/.test(currentTargetId())) {
+    setStatus(`${name} 需要目标 ID：默认玩家开局科研船为 0。也可在右上角改选或自定义。`, true);
     return;
   }
-  const command = withTarget(item.command);
+  const command = withTarget(item.command, item);
   state.sending = true;
   document.body.classList.add("busy");
   setStatus(`发送中：${name}`);
@@ -269,10 +342,12 @@ function scheduleSave() {
   $(id).addEventListener("input", scheduleSave);
 });
 $("consoleKey").addEventListener("change", scheduleSave);
+$("targetPick").addEventListener("change", () => {
+  $("targetCustomWrap").hidden = $("targetPick").value !== "custom";
+  if ($("targetPick").value !== "custom") state.targetId = $("targetPick").value;
+});
 $("targetId").addEventListener("input", () => {
-  if (state.category === "event" || state.category === "all") {
-    state.page = 1;
-  }
+  state.targetId = $("targetId").value.trim();
 });
 $("hideMissing").addEventListener("change", () => {
   state.hideMissing = $("hideMissing").checked;

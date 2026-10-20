@@ -25,8 +25,17 @@
     <label class="grow">搜索
       <input id="q" placeholder="女王泰坦 / add_ship / 戴森球" />
     </label>
-    <label class="target">目标 ID
-      <input id="targetId" inputmode="numeric" placeholder="舰船事件用" title="舰船事件需要目标 ID：控制台输入 debugtooltip 后把鼠标移到舰船上查看 ID" />
+    <label class="target">目标
+      <select id="targetPick" title="默认玩家。舰船事件会把 ID 附到命令末尾；其它命令先在游戏里选中对应对象。">
+        <option value="0" selected>玩家 (0)</option>
+        <option value="1">帝国 1</option>
+        <option value="2">帝国 2</option>
+        <option value="custom">自定义 ID</option>
+      </select>
+    </label>
+    <label class="target custom-id" id="targetCustomWrap" hidden>
+      自定义 ID
+      <input id="targetId" inputmode="numeric" placeholder="debugtooltip 查看" title="控制台输入 debugtooltip 后，把鼠标移到舰船、星球或帝国上查看 ID" />
     </label>
     <label class="check">
       <input id="hideMissing" type="checkbox" />
@@ -68,6 +77,7 @@
   <nav class="cats" id="cats"></nav>
   <div class="meta" id="meta"></div>
   <div class="grid" id="grid"></div>
+  <div id="tip" class="tip" hidden></div>
   <footer class="pager">
     <button id="prev" type="button">上一页</button>
     <span id="pageInfo">1 / 1</span>

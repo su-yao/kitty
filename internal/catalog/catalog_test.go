@@ -176,6 +176,75 @@ func TestListFilteredHidesMissing(t *testing.T) {
 	}
 }
 
+func TestDefaultPlayerTargetAndLore(t *testing.T) {
+	s := New()
+	page := s.List(CatEvent, "地平线信号", "4.4.6", 1, 10)
+	if page.Total != 1 {
+		t.Fatal("horizon signal missing")
+	}
+	e := page.Items[0]
+	if e.DefaultTarget != "0" {
+		t.Fatalf("ship event default target %q", e.DefaultTarget)
+	}
+	if !e.Target {
+		t.Fatal("horizon signal needs a ship target id")
+	}
+	if len(e.Targets) == 0 || e.Targets[0].ID != "0" {
+		t.Fatalf("want player science ship option, got %+v", e.Targets)
+	}
+	if e.Lore == "" || e.TargetHint == "" {
+		t.Fatalf("missing lore or target hint: %+v", e)
+	}
+	cash := s.List(CatResource, "cash 5000", "4.4.6", 1, 5)
+	if cash.Total == 0 || cash.Items[0].DefaultTarget != "0" || cash.Items[0].Lore == "" {
+		t.Fatal("resource commands should default to the player and include lore")
+	}
+	play := s.List(CatEmpire, "Play 0", "4.4.6", 1, 10)
+	if play.Total == 0 {
+		t.Fatal("play 0 missing")
+	}
+	found := false
+	for _, item := range play.Items {
+		if item.Command == "play 0" {
+			found = true
+			if item.DefaultTarget != "0" {
+				t.Fatalf("play default %q", item.DefaultTarget)
+			}
+			if len(item.Targets) < 2 {
+				t.Fatalf("play should list extra empires: %+v", item.Targets)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("play 0 not found")
+	}
+}
+
+func TestAllListedEntriesHavePlayerDefault(t *testing.T) {
+	s := New()
+	page := s.List("", "", "4.4.6", 1, 800)
+	if page.Total == 0 {
+		t.Fatal("empty catalog")
+	}
+	if page.Total > len(page.Items) {
+		t.Fatalf("need all items, total=%d got=%d", page.Total, len(page.Items))
+	}
+	for _, e := range page.Items {
+		if e.DefaultTarget != "0" {
+			t.Fatalf("%s default target %q", e.Command, e.DefaultTarget)
+		}
+		if len(e.Targets) == 0 || e.Targets[0].ID != "0" {
+			t.Fatalf("%s missing player target: %+v", e.Command, e.Targets)
+		}
+		if e.Lore == "" {
+			t.Fatalf("%s missing lore", e.Command)
+		}
+		if e.TargetHint == "" {
+			t.Fatalf("%s missing target hint", e.Command)
+		}
+	}
+}
+
 func TestEventScopesAreValid(t *testing.T) {
 	valid := map[string]bool{"": true, "country": true, "planet": true, "fleet": true, "ship": true,
 		"leader": true, "starbase": true, "first_contact": true, "system": true, "situation": true,

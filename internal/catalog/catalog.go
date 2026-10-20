@@ -28,6 +28,20 @@ type Entry struct {
 	// Missing is set after a scan when the event id or ship design used by a
 	// built-in entry does not exist in the current game files.
 	Missing bool `json:"missing,omitempty"`
+	// DefaultTarget is the numeric id used when the command needs a target.
+	// Player country and the starting science ship are both 0.
+	DefaultTarget string `json:"default_target,omitempty"`
+	// Targets lists the player default plus other valid ids the user can pick.
+	Targets []TargetOpt `json:"targets,omitempty"`
+	// Lore is the Stellaris background shown when hovering a command button.
+	Lore string `json:"lore,omitempty"`
+	// TargetHint explains which in-game object the command acts on.
+	TargetHint string `json:"target_hint,omitempty"`
+}
+
+type TargetOpt struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
 }
 
 type Category struct {
@@ -212,7 +226,7 @@ func (s *Store) ListFiltered(category, query, version string, page, pageSize int
 			continue
 		}
 		if query != "" {
-			blob := strings.ToLower(e.NameZH + " " + e.NameEN + " " + e.Command + " " + e.Note)
+			blob := strings.ToLower(e.NameZH + " " + e.NameEN + " " + e.Command + " " + e.Note + " " + e.Lore)
 			if !strings.Contains(blob, query) {
 				continue
 			}
@@ -255,33 +269,119 @@ func (s *Store) ListFiltered(category, query, version string, page, pageSize int
 }
 
 func (s *Store) decorate(e Entry) Entry {
-	if e.Source != "vanilla" {
-		return e
-	}
-	if e.Category == CatEvent {
-		if id, ok := eventID(e.Command); ok {
-			if sc, found := s.hints.EventScopes[id]; found {
-				e.Scope = sc
+	if e.Source == "vanilla" {
+		if e.Category == CatEvent {
+			if id, ok := eventID(e.Command); ok {
+				if sc, found := s.hints.EventScopes[id]; found {
+					e.Scope = sc
+				}
+				if s.hints.EventsVerified && !s.hints.EventIDs[id] {
+					e.Missing = true
+				}
 			}
-			if s.hints.EventsVerified && !s.hints.EventIDs[id] {
+		}
+		if name, ok := shipDesign(e.Command); ok {
+			// add_ship places the new ship next to the selected object, so
+			// something must be selected first.
+			if e.Scope == "" {
+				e.Scope = "selected"
+			}
+			// Player-created designs are not in the game files, so only preset
+			// NAME_ designs can be verified.
+			if strings.HasPrefix(name, "NAME_") && s.hints.DesignsVerified &&
+				!s.hints.DesignNames[name] && !s.hints.DesignNames[strings.TrimPrefix(name, "NAME_")] {
 				e.Missing = true
 			}
 		}
+	} else if _, ok := shipDesign(e.Command); ok && e.Scope == "" {
+		e.Scope = "selected"
 	}
-	if name, ok := shipDesign(e.Command); ok {
-		// add_ship places the new ship next to the selected object, so
-		// something must be selected first.
-		if e.Scope == "" {
-			e.Scope = "selected"
-		}
-		// Player-created designs are not in the game files, so only preset
-		// NAME_ designs can be verified.
-		if strings.HasPrefix(name, "NAME_") && s.hints.DesignsVerified &&
-			!s.hints.DesignNames[name] && !s.hints.DesignNames[strings.TrimPrefix(name, "NAME_")] {
-			e.Missing = true
-		}
+	if e.Scope == "ship" {
+		e.Target = true
+	} else if e.Scope != "" && e.Scope != "selected" {
+		e.Target = false
+	}
+	e = fillTargets(e)
+	if e.Lore == "" {
+		e.Lore = loreFor(e)
 	}
 	return e
+}
+
+func fillTargets(e Entry) Entry {
+	if e.TargetHint != "" && len(e.Targets) > 0 {
+		return e
+	}
+	player := TargetOpt{ID: "0", Label: "玩家"}
+	switch {
+	case e.Target:
+		e.DefaultTarget = "0"
+		e.Targets = []TargetOpt{{ID: "0", Label: "玩家开局科研船"}}
+		e.TargetHint = "默认玩家开局科研船（ID 0）。控制台输入 debugtooltip 后，把鼠标移到舰船上可查看其它舰船 ID。"
+	case e.Scope == "fleet":
+		e.DefaultTarget = "0"
+		e.Targets = []TargetOpt{player}
+		e.TargetHint = "先在游戏中选中玩家舰队，再发送。命令本身不附加数字 ID。"
+	case e.Scope == "planet":
+		e.DefaultTarget = "0"
+		e.Targets = []TargetOpt{player}
+		e.TargetHint = "先在游戏中选中玩家星球，再发送。命令本身不附加数字 ID。"
+	case e.Scope == "ship":
+		e.DefaultTarget = "0"
+		e.Targets = []TargetOpt{{ID: "0", Label: "玩家开局科研船"}}
+		e.TargetHint = "先在游戏中选中玩家舰船。需要目标 ID 的事件会默认使用开局科研船 0。"
+	case e.Scope == "leader":
+		e.DefaultTarget = "0"
+		e.Targets = []TargetOpt{player}
+		e.TargetHint = "先在游戏中选中玩家领袖。"
+	case e.Scope == "starbase":
+		e.DefaultTarget = "0"
+		e.Targets = []TargetOpt{player}
+		e.TargetHint = "先在游戏中选中玩家恒星基地。"
+	case e.Scope == "first_contact":
+		e.DefaultTarget = "0"
+		e.Targets = []TargetOpt{player}
+		e.TargetHint = "先在游戏中选中进行中的首次接触。"
+	case e.Scope == "system":
+		e.DefaultTarget = "0"
+		e.Targets = []TargetOpt{player}
+		e.TargetHint = "先在游戏中选中目标星系。"
+	case e.Scope == "situation":
+		e.DefaultTarget = "0"
+		e.Targets = []TargetOpt{player}
+		e.TargetHint = "先在局势界面选中对应局势。"
+	case e.Scope == "selected":
+		e.DefaultTarget = "0"
+		e.Targets = []TargetOpt{player}
+		e.TargetHint = "先选中玩家舰队、星球或恒星，新对象会生成在该单位旁边。"
+	case needsCountryID(e.Command):
+		e.DefaultTarget = "0"
+		e.Targets = []TargetOpt{
+			player,
+			{ID: "1", Label: "帝国 1"},
+			{ID: "2", Label: "帝国 2"},
+		}
+		e.TargetHint = "默认玩家帝国（ID 0）。右上角可改选其它帝国 ID。"
+	default:
+		e.DefaultTarget = "0"
+		e.Targets = []TargetOpt{player}
+		e.TargetHint = "默认作用于玩家帝国（ID 0），无需额外目标 ID。"
+	}
+	return e
+}
+
+func needsCountryID(cmd string) bool {
+	for _, p := range []string{
+		"play ", "annex", "force_integrate", "add_opinion ", "add_trust ",
+		"add_intel ", "add_loyalty ", "add_spynetwork_value ", "add_subject_xp ",
+		"war ", "casusbelli ", "surrender ", "kill_country", "kill_pop ",
+		"kill_leader ", "add_trait_leader ", "add_trait_species ",
+	} {
+		if strings.HasPrefix(cmd, p) || cmd == strings.TrimSpace(p) {
+			return true
+		}
+	}
+	return false
 }
 
 func eventID(command string) (string, bool) {
