@@ -15,15 +15,20 @@ import (
 )
 
 const (
-	appName      = "Stellaris Console Panel"
-	appNameZH    = "群星控制台面板"
-	appPublisher = "Stellaris Console Panel"
-	exeName      = "StellarisConsolePanel.exe"
-	uninstallID  = "StellarisConsolePanel"
+	appName         = "Stellaris Console Panel"
+	appNameZH       = "群星控制台面板"
+	appPublisher    = "Stellaris Console Panel"
+	exeName         = "StellarisConsolePanel.exe"
+	uninstallID     = "StellarisConsolePanel"
+	uninstExeName   = "Uninstall.exe"
+	uninstNoteName  = "Uninstall.txt"
+	installMetaName = "install.json"
+	shortcutApp     = "StellarisConsolePanel.lnk"
+	shortcutUninst  = "Uninstall-StellarisConsolePanel.lnk"
 )
 
 // appVersion can be overridden at build time with -X main.appVersion=...
-var appVersion = "1.2.2"
+var appVersion = "1.3.0"
 
 // silentMode suppresses interactive "press enter" prompts, which would hang
 // unattended installs launched with /S.
@@ -170,7 +175,7 @@ func runInstall(opts installOpts) error {
 	}
 	fmt.Printf("  已复制 %d 个文件\n", n)
 
-	uninst := filepath.Join(opts.Dest, "Uninstall.exe")
+	uninst := filepath.Join(opts.Dest, uninstExeName)
 	self, err := os.Executable()
 	if err != nil {
 		return err
@@ -185,8 +190,8 @@ func runInstall(opts installOpts) error {
 		"installed":   time.Now().Format(time.RFC3339),
 	}
 	b, _ := json.MarshalIndent(meta, "", "  ")
-	_ = os.WriteFile(filepath.Join(opts.Dest, "install.json"), b, 0644)
-	_ = os.WriteFile(filepath.Join(opts.Dest, "UNINSTALL.txt"), []byte(
+	_ = os.WriteFile(filepath.Join(opts.Dest, installMetaName), b, 0644)
+	_ = os.WriteFile(filepath.Join(opts.Dest, uninstNoteName), []byte(
 		"卸载方式：\r\n"+
 			"1. 运行本目录 Uninstall.exe\r\n"+
 			"2. 或打开「设置 - 应用」，卸载「"+appNameZH+"」\r\n"+
@@ -197,14 +202,14 @@ func runInstall(opts installOpts) error {
 	if runtime.GOOS == "windows" {
 		if opts.StartMenu {
 			fmt.Println("正在创建开始菜单快捷方式...")
-			if err := createShortcut(startMenuDir(), appNameZH+".lnk", exe, opts.Dest, appNameZH); err != nil {
+			if err := createShortcut(startMenuDir(), shortcutApp, exe, opts.Dest, appNameZH); err != nil {
 				fmt.Println("  开始菜单快捷方式失败:", err)
 			}
-			_ = createShortcut(startMenuDir(), "卸载 "+appNameZH+".lnk", uninst, opts.Dest, "卸载 "+appNameZH)
+			_ = createShortcut(startMenuDir(), shortcutUninst, uninst, opts.Dest, "卸载 "+appNameZH)
 		}
 		if opts.Desktop {
 			fmt.Println("正在创建桌面快捷方式...")
-			if err := createShortcut(desktopDir(), appNameZH+".lnk", exe, opts.Dest, appNameZH); err != nil {
+			if err := createShortcut(desktopDir(), shortcutApp, exe, opts.Dest, appNameZH); err != nil {
 				fmt.Println("  桌面快捷方式失败:", err)
 			}
 		}
@@ -242,11 +247,17 @@ func runUninstall(opts installOpts) error {
 	}
 	terminateApp()
 	time.Sleep(300 * time.Millisecond)
+	removeShortcut(startMenuDir(), shortcutApp)
+	removeShortcut(startMenuDir(), shortcutUninst)
 	removeShortcut(startMenuDir(), appNameZH+".lnk")
 	removeShortcut(startMenuDir(), "卸载 "+appNameZH+".lnk")
+	removeShortcut(legacyStartMenuDir(), appNameZH+".lnk")
+	removeShortcut(legacyStartMenuDir(), "卸载 "+appNameZH+".lnk")
+	removeShortcut(desktopDir(), shortcutApp)
 	removeShortcut(desktopDir(), appNameZH+".lnk")
 	_ = deleteUninstallKey()
-	_ = os.Remove(filepath.Join(dest, "install.json"))
+	_ = os.Remove(filepath.Join(dest, installMetaName))
+	_ = os.Remove(filepath.Join(dest, uninstNoteName))
 	_ = os.Remove(filepath.Join(dest, "UNINSTALL.txt"))
 	_ = os.Remove(filepath.Join(dest, exeName))
 	_ = os.Remove(filepath.Join(dest, "README.md"))
@@ -269,7 +280,11 @@ func extractPayload(dest string) (int, error) {
 		if rel == "." {
 			return nil
 		}
-		target := filepath.Join(dest, rel)
+		safe, ok := safeRelPath(rel)
+		if !ok {
+			return nil
+		}
+		target := filepath.Join(dest, safe)
 		if d.IsDir() {
 			return os.MkdirAll(target, 0755)
 		}
@@ -306,6 +321,14 @@ func startMenuDir() string {
 	if prog == "" {
 		prog = `C:\ProgramData`
 	}
+	return filepath.Join(prog, "Microsoft", "Windows", "Start Menu", "Programs", uninstallID)
+}
+
+func legacyStartMenuDir() string {
+	prog := os.Getenv("ProgramData")
+	if prog == "" {
+		prog = `C:\ProgramData`
+	}
 	return filepath.Join(prog, "Microsoft", "Windows", "Start Menu", "Programs", appNameZH)
 }
 
@@ -315,6 +338,89 @@ func desktopDir() string {
 		pub = `C:\Users\Public`
 	}
 	return filepath.Join(pub, "Desktop")
+}
+
+func safeRelPath(rel string) (string, bool) {
+	rel = strings.TrimSpace(rel)
+	rel = strings.ReplaceAll(rel, `\`, "/")
+	if rel == "" || rel == "." {
+		return "", false
+	}
+	parts := strings.Split(rel, "/")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p == "" || p == "." {
+			continue
+		}
+		if p == ".." {
+			return "", false
+		}
+		n := sanitizeFileName(p)
+		if n == "" {
+			return "", false
+		}
+		out = append(out, n)
+	}
+	if len(out) == 0 {
+		return "", false
+	}
+	return filepath.Join(out...), true
+}
+
+func sanitizeFileName(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ""
+	}
+	base, ext := name, ""
+	if i := strings.LastIndex(name, "."); i >= 0 {
+		base = name[:i]
+		ext = name[i:]
+	}
+	cleanBase := keepASCIIName(base)
+	if cleanBase == "" || reservedWinName(cleanBase) {
+		return ""
+	}
+	cleanExt := keepASCIIName(strings.TrimPrefix(ext, "."))
+	if ext != "" && cleanExt == "" {
+		return ""
+	}
+	if cleanExt != "" {
+		return cleanBase + "." + cleanExt
+	}
+	return cleanBase
+}
+
+func keepASCIIName(s string) string {
+	var b strings.Builder
+	hasAlnum := false
+	for _, r := range s {
+		switch {
+		case r >= 'A' && r <= 'Z', r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			hasAlnum = true
+			b.WriteRune(r)
+		case r == '-' || r == '_':
+			b.WriteRune(r)
+		}
+	}
+	if !hasAlnum {
+		return ""
+	}
+	out := strings.Trim(b.String(), "-_")
+	if out == "" || out == "." || out == ".." {
+		return ""
+	}
+	return out
+}
+
+func reservedWinName(name string) bool {
+	switch strings.ToUpper(name) {
+	case "CON", "PRN", "AUX", "NUL",
+		"COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+		"LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9":
+		return true
+	}
+	return false
 }
 
 func copyFile(src, dst string) error {

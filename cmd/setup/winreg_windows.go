@@ -101,7 +101,7 @@ func terminateApp() {
 }
 
 func selfDelete(dest string) {
-	exe := filepath.Join(dest, "Uninstall.exe")
+	exe := filepath.Join(dest, uninstExeName)
 	if _, err := os.Stat(exe); err != nil {
 		return
 	}

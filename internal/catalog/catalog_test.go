@@ -1,6 +1,9 @@
 package catalog
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestCompareVer(t *testing.T) {
 	if compareVer("3.0.0", "3.0.0") != 0 {
@@ -242,6 +245,159 @@ func TestAllListedEntriesHavePlayerDefault(t *testing.T) {
 		if e.TargetHint == "" {
 			t.Fatalf("%s missing target hint", e.Command)
 		}
+	}
+}
+
+func TestMegaSpawnAvoidsStarCenter(t *testing.T) {
+	s := New()
+	page := s.List(CatMega, "星门 完成", "4.4.6", 1, 10)
+	if page.Total == 0 {
+		t.Fatal("gateway missing")
+	}
+	cmd := page.Items[0].Command
+	if !strings.Contains(cmd, "spawn_megastructure") {
+		t.Fatalf("gateway should spawn, got %s", cmd)
+	}
+	if !strings.Contains(cmd, "orbit_distance") {
+		t.Fatalf("gateway should sit on the rim, got %s", cmd)
+	}
+	if !strings.Contains(cmd, "orbit_angle = random") {
+		t.Fatalf("gateway should pick a random rim angle: %s", cmd)
+	}
+	if !strings.Contains(page.Items[0].TargetHint, "外围") {
+		t.Fatalf("gateway hint should mention the rim: %q", page.Items[0].TargetHint)
+	}
+	dyson := s.List(CatMega, "戴森球 完成", "4.4.6", 1, 10)
+	if dyson.Total == 0 || !strings.Contains(dyson.Items[0].Command, "planet = star") {
+		t.Fatalf("dyson should wrap the star: %+v", dyson.Items)
+	}
+	if strings.Contains(dyson.Items[0].Command, "orbit_distance") {
+		t.Fatalf("dyson should not offset from the star: %s", dyson.Items[0].Command)
+	}
+	hab := s.List(CatMega, "居住站核心", "4.4.6", 1, 10)
+	if hab.Total == 0 || hab.Items[0].Scope != "planet" {
+		t.Fatalf("habitat should require a planet: %+v", hab.Items)
+	}
+	if !strings.Contains(hab.Items[0].TargetHint, "行星") {
+		t.Fatalf("habitat hint should mention planet: %q", hab.Items[0].TargetHint)
+	}
+	lathe := s.List(CatMega, "突触凝练机", "4.4.6", 1, 10)
+	if lathe.Total == 0 || lathe.Items[0].Scope != "planet" {
+		t.Fatalf("synaptic lathe should require a planet: %+v", lathe.Items)
+	}
+	egg := s.List(CatMega, "噬天巨兽卵", "4.4.6", 1, 10)
+	if egg.Total == 0 || egg.Items[0].Scope != "planet" {
+		t.Fatalf("behemoth egg should require a planet: %+v", egg.Items)
+	}
+	if strings.Contains(egg.Items[0].Command, "planet = star") {
+		t.Fatalf("behemoth egg should not wrap the star: %s", egg.Items[0].Command)
+	}
+	ark := s.List(CatMega, "民用方舟", "4.4.6", 1, 10)
+	if ark.Total == 0 || !strings.Contains(ark.Items[0].Command, "orbit_distance") {
+		t.Fatalf("arkship should sit on the rim: %+v", ark.Items)
+	}
+	nexus := s.List(CatMega, "科学枢纽 完成", "4.4.6", 1, 10)
+	if nexus.Total == 0 || !strings.Contains(nexus.Items[0].Command, "orbit_distance") {
+		t.Fatalf("science nexus should sit on the rim: %+v", nexus.Items)
+	}
+	archive := s.List(CatMega, "博物天枢", "4.4.6", 1, 10)
+	if archive.Total == 0 || !strings.Contains(archive.Items[0].Command, "orbit_distance") {
+		t.Fatalf("grand archive should sit on the rim: %+v", archive.Items)
+	}
+	seal := s.List(CatMega, "虚境封印", "4.4.6", 1, 10)
+	if seal.Total == 0 || !strings.Contains(seal.Items[0].Command, "orbit_distance") {
+		t.Fatalf("shroud seal should sit on the rim: %+v", seal.Items)
+	}
+}
+
+func TestClassifyMegaFromScript(t *testing.T) {
+	kind, dist := ClassifyMega("mystery_gate", "build_outside_gravity_well = yes")
+	if kind != megaRim || dist <= 0 {
+		t.Fatalf("gravity-well flag should sit on the rim: %s %d", kind, dist)
+	}
+	cmd := MegaSpawnCommandKind("mystery_gate", kind, dist)
+	if !strings.Contains(cmd, "orbit_angle = random") {
+		t.Fatalf("rim spawn should randomize angle: %s", cmd)
+	}
+	kind, _ = ClassifyMega("mystery_ring", "is_orbital_ring = yes")
+	if kind != megaPlanet {
+		t.Fatalf("orbital ring should need a planet, got %s", kind)
+	}
+	kind, _ = ClassifyMega("mystery_star", "possible = { is_star = yes }")
+	if kind != megaStar {
+		t.Fatalf("star trigger should wrap the star, got %s", kind)
+	}
+	kind, dist = ClassifyMega("mystery_gate2", "possible = { NOR = { is_star = yes } }")
+	if kind != megaRim || dist <= 0 {
+		t.Fatalf("negated star check should stay on the rim: %s %d", kind, dist)
+	}
+	kind, _ = ClassifyMega("mystery_habitat", "place_entity_on_planet = yes")
+	if kind != megaPlanet {
+		t.Fatalf("place_entity_on_planet should need a planet, got %s", kind)
+	}
+	kind, _ = ClassifyMega("mystery_hab2", "is_habitat = yes")
+	if kind != megaPlanet {
+		t.Fatalf("is_habitat should need a planet, got %s", kind)
+	}
+	kind, dist = ClassifyMega("civilian_arkship_megastructure", "")
+	if kind != megaRim || dist <= 0 {
+		t.Fatalf("arkship should sit on the rim: %s %d", kind, dist)
+	}
+	kind, dist = ClassifyMega("mystery_bypass", "bypass_type = gateway")
+	if kind != megaRim || dist <= 0 {
+		t.Fatalf("bypass_type should sit on the rim: %s %d", kind, dist)
+	}
+	kind, dist = ClassifyMega("mystery_gate3", "build_outside_gravity_well = yes\norbit_distance = 72")
+	if kind != megaRim || dist != 72 {
+		t.Fatalf("script orbit_distance should be used: %s %d", kind, dist)
+	}
+}
+
+func TestAllMegaSpawnCommandsHavePlacement(t *testing.T) {
+	s := New()
+	page := s.List(CatMega, "", "4.5.0", 1, 800)
+	if page.Total == 0 {
+		t.Fatal("empty mega catalog")
+	}
+	for _, e := range page.Items {
+		if !strings.Contains(e.Command, "spawn_megastructure") {
+			continue
+		}
+		star := strings.Contains(e.Command, "planet = star")
+		planet := strings.Contains(e.Command, "planet = this")
+		rim := strings.Contains(e.Command, "orbit_distance")
+		if planet {
+			if e.Scope != "planet" {
+				t.Fatalf("%s planet spawn needs planet scope: %s", e.NameZH, e.Command)
+			}
+			continue
+		}
+		if star && !rim {
+			continue
+		}
+		if rim && strings.Contains(e.Command, "orbit_angle = random") {
+			continue
+		}
+		t.Fatalf("%s missing placement: %s", e.NameZH, e.Command)
+	}
+}
+
+func TestScannedModLore(t *testing.T) {
+	s := New()
+	s.ReplaceScanned([]Entry{
+		{NameZH: "吉加恒星工程", Command: MegaSpawnCommand("gigastructure_sun"), Category: CatMod, Since: "3.0.0",
+			Source: "mod:Gigastructures", Lore: "来自 MOD Gigastructures。把恒星改造成能量核心。"},
+	})
+	page := s.List(CatMod, "吉加恒星工程", "4.4.6", 1, 10)
+	if page.Total != 1 {
+		t.Fatalf("mod entry missing: %+v", page)
+	}
+	e := page.Items[0]
+	if !strings.Contains(e.Lore, "Gigastructures") || !strings.Contains(e.Lore, "能量核心") {
+		t.Fatalf("mod lore incomplete: %q", e.Lore)
+	}
+	if !strings.Contains(e.Command, "orbit_distance") && !strings.Contains(e.Command, "planet = star") {
+		t.Fatalf("mod mega should use spawn placement: %s", e.Command)
 	}
 }
 

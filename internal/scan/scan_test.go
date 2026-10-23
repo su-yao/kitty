@@ -3,6 +3,7 @@ package scan
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -19,7 +20,13 @@ func TestScanShipsAndMegas(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(locDir, "ships_l_simp_chinese.yml"), []byte(`
 l_simp_chinese:
  NAME_Synth_Queen_Titan:0 "女王泰坦"
+ NAME_Synth_Queen_Titan_DESC:0 "塞塔娜的纳米泰坦，来自机械纪元。"
  giga.1234:0 "吉加事件"
+ giga.1234.desc:0 "吉加结构展开，恒星周围出现巨环。"
+ gigastructure_sun:0 "吉加恒星工程"
+ gigastructure_sun_DESC:0 "把恒星改造成能量核心。"
+ mystery_gate:0 "神秘星门"
+ mystery_gate_DESC:0 "在星系外围生成，轨道角随机。"
 `), 0644)
 	_ = os.WriteFile(filepath.Join(shipDir, "demo.txt"), []byte(`
 my_design = {
@@ -34,6 +41,11 @@ bg_ship = {
 	_ = os.WriteFile(filepath.Join(megaDir, "demo.txt"), []byte(`
 gigastructure_sun = {
 	entity = "foo"
+	possible = { is_star = yes }
+}
+mystery_gate = {
+	entity = "gate"
+	build_outside_gravity_well = yes
 }
 skybox_background = {
 	entity = "bar"
@@ -53,35 +65,62 @@ country_event = {
 	if err != nil {
 		t.Fatal(err)
 	}
-	foundShip, foundMega, foundEvt := false, false, false
+	foundShip, foundMega, foundEvt, foundRim := false, false, false, false
 	for _, e := range items {
 		if e.Command == "add_ship NAME_Synth_Queen_Titan" {
 			foundShip = true
 			if e.NameZH != "女王泰坦" {
 				t.Fatalf("want chinese name, got %q", e.NameZH)
 			}
+			if !strings.Contains(e.Lore, "纳米泰坦") {
+				t.Fatalf("ship lore missing localisation: %q", e.Lore)
+			}
 		}
 		if e.Command == "add_ship NAME_Background_Decor" {
 			t.Fatal("decorative ship should be filtered")
 		}
-		if e.Command == "create_megastructure skybox_background" {
+		if strings.Contains(e.Command, "skybox_background") {
 			t.Fatal("background mega should be filtered")
 		}
 		if e.Command == "event test.1" {
 			t.Fatal("test event should be filtered")
 		}
-		if e.Command == "create_megastructure gigastructure_sun" {
+		if strings.Contains(e.Command, "type = gigastructure_sun") {
 			foundMega = true
+			if !strings.Contains(e.Lore, "能量核心") {
+				t.Fatalf("mega lore missing localisation: %q", e.Lore)
+			}
+			if !strings.Contains(e.Command, "planet = star") {
+				t.Fatalf("star mega should wrap the star: %s", e.Command)
+			}
+			if strings.Contains(e.Command, "orbit_distance") {
+				t.Fatalf("star mega should not offset: %s", e.Command)
+			}
+			if !strings.Contains(e.Lore, "恒星") {
+				t.Fatalf("star mega lore should mention the star: %q", e.Lore)
+			}
+		}
+		if strings.Contains(e.Command, "type = mystery_gate") {
+			foundRim = true
+			if !strings.Contains(e.Command, "orbit_distance") || !strings.Contains(e.Command, "orbit_angle = random") {
+				t.Fatalf("rim mega should randomize orbit: %s", e.Command)
+			}
+			if !strings.Contains(e.Lore, "外围") {
+				t.Fatalf("rim mega lore should mention the rim: %q", e.Lore)
+			}
 		}
 		if e.Command == "event giga.1234" {
 			foundEvt = true
 			if e.Since != "3.0.0" {
 				t.Fatalf("scanned entry should be visible on every version, got since=%q", e.Since)
 			}
+			if !strings.Contains(e.Lore, "巨环") {
+				t.Fatalf("event lore missing localisation: %q", e.Lore)
+			}
 		}
 	}
-	if !foundShip || !foundMega || !foundEvt {
-		t.Fatalf("scan miss ship=%v mega=%v evt=%v n=%d", foundShip, foundMega, foundEvt, len(items))
+	if !foundShip || !foundMega || !foundEvt || !foundRim {
+		t.Fatalf("scan miss ship=%v mega=%v evt=%v rim=%v n=%d", foundShip, foundMega, foundEvt, foundRim, len(items))
 	}
 }
 

@@ -296,12 +296,23 @@ func (s *Store) decorate(e Entry) Entry {
 	} else if _, ok := shipDesign(e.Command); ok && e.Scope == "" {
 		e.Scope = "selected"
 	}
+	if id, ok := megaType(e.Command); ok {
+		if strings.HasPrefix(strings.TrimSpace(e.Command), "create_megastructure ") {
+			e.Command = MegaSpawnCommand(id)
+		}
+		if e.Scope == "" {
+			e.Scope = MegaScope(id)
+		}
+	}
 	if e.Scope == "ship" {
 		e.Target = true
 	} else if e.Scope != "" && e.Scope != "selected" {
 		e.Target = false
 	}
 	e = fillTargets(e)
+	if _, ok := megaType(e.Command); ok {
+		e.TargetHint = megaTargetHint(e.Command)
+	}
 	if e.Lore == "" {
 		e.Lore = loreFor(e)
 	}
@@ -345,7 +356,7 @@ func fillTargets(e Entry) Entry {
 	case e.Scope == "system":
 		e.DefaultTarget = "0"
 		e.Targets = []TargetOpt{player}
-		e.TargetHint = "先在游戏中选中目标星系。"
+		e.TargetHint = "先在游戏中选中目标星系。星门等会放在星系外围，戴森球等会套在恒星上。"
 	case e.Scope == "situation":
 		e.DefaultTarget = "0"
 		e.Targets = []TargetOpt{player}

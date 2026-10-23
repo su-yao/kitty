@@ -46,6 +46,37 @@ func TestParseArgsQuotedDir(t *testing.T) {
 	}
 }
 
+func TestSanitizeFileName(t *testing.T) {
+	ok := map[string]string{
+		"StellarisConsolePanel.exe": "StellarisConsolePanel.exe",
+		"README.md":                 "README.md",
+		"Uninstall.txt":             "Uninstall.txt",
+		"a b.txt":                   "ab.txt",
+	}
+	for in, want := range ok {
+		if got := sanitizeFileName(in); got != want {
+			t.Fatalf("%q -> %q, want %q", in, got, want)
+		}
+	}
+	bad := []string{"CON", "nul.txt", "..", ".", "", "???", "卸载.lnk"}
+	for _, in := range bad {
+		if got := sanitizeFileName(in); got != "" {
+			t.Fatalf("want drop %q, got %q", in, got)
+		}
+	}
+}
+
+func TestSafeRelPath(t *testing.T) {
+	got, ok := safeRelPath(`payload\..\StellarisConsolePanel.exe`)
+	if ok {
+		t.Fatalf("parent path should be rejected: %q", got)
+	}
+	got, ok = safeRelPath("StellarisConsolePanel.exe")
+	if !ok || got != "StellarisConsolePanel.exe" {
+		t.Fatalf("exe path: %q %v", got, ok)
+	}
+}
+
 func TestParseArgsUninstall(t *testing.T) {
 	old := os.Args
 	defer func() { os.Args = old }()

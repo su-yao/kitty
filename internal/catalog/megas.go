@@ -1,7 +1,243 @@
 package catalog
 
+import (
+	"fmt"
+	"strings"
+)
+
 func mega(zh, en, id, since, note string) Entry {
-	return e(zh, en, "create_megastructure "+id, CatMega, since, note)
+	return e(zh, en, MegaSpawnCommand(id), CatMega, since, note)
+}
+
+const (
+	megaStar   = "star"
+	megaPlanet = "planet"
+	megaRim    = "rim"
+)
+
+// MegaSpawnCommand builds a console effect that places the megastructure where
+// the AI / normal construction would: star-centered types wrap the star,
+// habitats and rings need a selected planet, gateways and similar sit on the
+// system rim instead of stacking on the star.
+func MegaSpawnCommand(id string) string {
+	kind, dist, _ := megaPlacement(id)
+	return MegaSpawnCommandKind(id, kind, dist)
+}
+
+func MegaSpawnCommandKind(id, kind string, dist int) string {
+	switch kind {
+	case megaPlanet:
+		return fmt.Sprintf("effect spawn_megastructure = { type = %s planet = this }", id)
+	case megaStar:
+		return fmt.Sprintf("effect solar_system = { spawn_megastructure = { type = %s planet = star } }", id)
+	default:
+		if dist <= 0 {
+			dist = 40
+		}
+		return fmt.Sprintf("effect solar_system = { spawn_megastructure = { type = %s planet = star orbit_distance = %d orbit_angle = random } }", id, dist)
+	}
+}
+
+func MegaScope(id string) string {
+	return MegaScopeKind(megaKindOf(id))
+}
+
+func MegaScopeKind(kind string) string {
+	if kind == megaPlanet {
+		return "planet"
+	}
+	return "selected"
+}
+
+func megaTargetHint(command string) string {
+	switch {
+	case strings.Contains(command, "planet = this"):
+		return "先在游戏中选中玩家行星。居住站、星环、电弧熔炉、突触凝练机和巨兽卵会生成在该行星上。"
+	case strings.Contains(command, "orbit_distance"):
+		return "先选中玩家星系中的恒星、星球或舰队。星门、中继器、深空擎天堡会放在星系外围，轨道角随机，避免叠在一起。"
+	case strings.Contains(command, "planet = star"):
+		return "先选中玩家星系中的恒星、星球或舰队。戴森球、环形世界等会包裹当前星系的恒星。"
+	default:
+		return "先选中玩家星系中的对象，再发送。"
+	}
+}
+
+func MegaPlacementLore(kind string) string {
+	switch kind {
+	case megaPlanet:
+		return "需先选中行星。"
+	case megaStar:
+		return "生成时包裹当前星系的恒星。"
+	default:
+		return "生成在星系外围，轨道角随机。"
+	}
+}
+
+func megaKindOf(id string) string {
+	k, _, _ := megaPlacement(id)
+	return k
+}
+
+// ClassifyMega reads Stellaris megastructure script flags so scanned vanilla
+// and MOD entries use the same placement as normal construction.
+func ClassifyMega(id, script string) (kind string, dist int) {
+	kind, dist, _ = megaPlacement(id)
+	if script == "" {
+		return
+	}
+	low := strings.ToLower(script)
+	if d := parseOrbitDistance(low); d > 0 && kind == megaRim {
+		dist = d
+	}
+	if hasFlag(low, "build_outside_gravity_well") {
+		if d := parseOrbitDistance(low); d > 0 {
+			dist = d
+		}
+		if dist <= 0 {
+			dist = 40
+		}
+		return megaRim, dist
+	}
+	if hasFlag(low, "is_orbital_ring") || hasFlag(low, "place_entity_on_planet") ||
+		hasFlag(low, "build_on_planet") || hasFlag(low, "is_habitat") ||
+		strings.Contains(low, "habitat_level") {
+		return megaPlanet, 0
+	}
+	if strings.Contains(low, "bypass_type") || hasFlag(low, "is_gateway") {
+		if dist <= 0 {
+			dist = 52
+		}
+		return megaRim, dist
+	}
+	starYes := strings.Contains(low, "is_star = yes") || strings.Contains(low, "is_star=yes")
+	starNo := strings.Contains(low, "is_star = no") || strings.Contains(low, "is_star=no")
+	negated := hasToken(low, "nor") || hasToken(low, "nand") || strings.Contains(low, "not =") || strings.Contains(low, "not=")
+	if kind == megaRim && starYes && !starNo && !negated {
+		return megaStar, 0
+	}
+	if kind == megaStar && starNo && !starYes {
+		return megaPlanet, 0
+	}
+	return kind, dist
+}
+
+func parseOrbitDistance(script string) int {
+	const key = "orbit_distance"
+	i := strings.Index(script, key)
+	if i < 0 {
+		return 0
+	}
+	rest := strings.TrimSpace(script[i+len(key):])
+	rest = strings.TrimPrefix(rest, "=")
+	rest = strings.TrimSpace(rest)
+	n := 0
+	for _, r := range rest {
+		if r < '0' || r > '9' {
+			break
+		}
+		n = n*10 + int(r-'0')
+		if n > 400 {
+			return 400
+		}
+	}
+	return n
+}
+
+func hasFlag(blob, name string) bool {
+	return strings.Contains(blob, name+" = yes") || strings.Contains(blob, name+"=yes")
+}
+
+func hasToken(blob, token string) bool {
+	i := 0
+	for {
+		j := strings.Index(blob[i:], token)
+		if j < 0 {
+			return false
+		}
+		j += i
+		beforeOK := j == 0 || !isIdentByte(blob[j-1])
+		after := j + len(token)
+		afterOK := after >= len(blob) || !isIdentByte(blob[after])
+		if beforeOK && afterOK {
+			return true
+		}
+		i = j + len(token)
+	}
+}
+
+func isIdentByte(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_'
+}
+
+func megaType(command string) (string, bool) {
+	if strings.HasPrefix(command, "create_megastructure ") {
+		id := strings.TrimSpace(strings.TrimPrefix(command, "create_megastructure "))
+		if id != "" && !strings.ContainsAny(id, " \t{") {
+			return id, true
+		}
+	}
+	const key = "type ="
+	i := strings.Index(command, key)
+	if i < 0 {
+		i = strings.Index(command, "type=")
+		if i < 0 {
+			return "", false
+		}
+		keyLen := len("type=")
+		rest := strings.TrimSpace(command[i+keyLen:])
+		return cutMegaID(rest)
+	}
+	rest := strings.TrimSpace(command[i+len(key):])
+	return cutMegaID(rest)
+}
+
+func cutMegaID(rest string) (string, bool) {
+	rest = strings.Trim(rest, `"`)
+	id := rest
+	for j, r := range rest {
+		if r == ' ' || r == '}' || r == '\t' {
+			id = rest[:j]
+			break
+		}
+	}
+	id = strings.Trim(id, `"`)
+	if id == "" {
+		return "", false
+	}
+	return id, true
+}
+
+func megaPlacement(id string) (kind string, dist, angle int) {
+	low := strings.ToLower(id)
+	switch {
+	case hasAny(low, "habitat", "orbital_ring", "arc_furnace", "cosmogenesis_world",
+		"synaptic", "behemoth_egg", "behemoth_chrysalis"):
+		return megaPlanet, 0, 0
+	case hasAny(low, "dyson_sphere", "dyson_swarm", "matter_decompressor", "crisis_sphere",
+		"quantum_catapult", "dyson_gun", "galactic_crucible", "ring_world",
+		"star_lifter", "birch", "penrose", "nidavellir"):
+		return megaStar, 0, 0
+	case hasAny(low, "gateway", "lgate"):
+		return megaRim, 52, 0
+	case hasAny(low, "hyper_relay", "waystation"):
+		return megaRim, 48, 0
+	case hasAny(low, "deep_space_citadel", "arkship", "shroud_seal"):
+		return megaRim, 56, 0
+	case hasAny(low, "think_tank", "spy_orb", "mega_art", "interstellar_assembly",
+		"mega_shipyard", "strategic_coordination", "grand_archive", "cosmogenesis_needle"):
+		return megaRim, 42, 0
+	default:
+		return megaRim, 40, 0
+	}
+}
+
+func hasAny(s string, parts ...string) bool {
+	for _, p := range parts {
+		if strings.Contains(s, p) {
+			return true
+		}
+	}
+	return false
 }
 
 func megas() []Entry {

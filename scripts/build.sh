@@ -38,11 +38,11 @@ cp README.md cmd/setup/payload/README.md
 echo "windows setup exe"
 GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath \
   -ldflags "-s -w -X main.appVersion=$VER" \
-  -o dist/windows/Setup.exe ./cmd/setup
+  -o dist/windows/StellarisConsolePanel-Setup.exe ./cmd/setup
 
 echo "done"
 ls -lh dist/windows dist/linux
 echo
-echo "安装：在 Win10 双击 dist/windows/Setup.exe（会弹出 UAC）"
-echo "静默：Setup.exe /S"
-echo "卸载：开始菜单「卸载 群星控制台面板」或 设置-应用"
+echo "安装：在 Win10 双击 dist/windows/StellarisConsolePanel-Setup.exe（会弹出 UAC）"
+echo "静默：StellarisConsolePanel-Setup.exe /S"
+echo "卸载：开始菜单 Uninstall-StellarisConsolePanel 或 设置-应用"

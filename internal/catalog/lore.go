@@ -1,7 +1,5 @@
 package catalog
 
-import "strings"
-
 func loreFor(e Entry) string {
 	if s := loreExact[e.Command]; s != "" {
 		return s
@@ -16,8 +14,7 @@ func loreFor(e Entry) string {
 			return s
 		}
 	}
-	if strings.HasPrefix(e.Command, "create_megastructure ") {
-		id := strings.TrimPrefix(e.Command, "create_megastructure ")
+	if id, ok := megaType(e.Command); ok {
 		if s := loreMega[id]; s != "" {
 			return s
 		}
@@ -36,7 +33,7 @@ func loreByCategory(e Entry) string {
 	case CatLeviathan:
 		return "生成银河守卫者或利维坦级单位。部分无法移动，击败后常解锁奖励事件或遗珍。"
 	case CatMega:
-		return "在当前选中星系生成巨构。部分阶段可重复执行以推进下一阶段；损坏版可修复。"
+		return "按正常建造位置生成：戴森球等包裹恒星；星门、中继器放在星系外围，避免叠在恒星中央；居住站与星环需先选中行星。"
 	case CatEvent:
 		return "触发对应事件。国家事件一般无需选中；星球/舰队/舰船事件需先选中正确对象。舰船事件可附加目标 ID。"
 	case CatTech:
@@ -50,7 +47,7 @@ func loreByCategory(e Entry) string {
 	case CatDebug:
 		return "调试命令。debugtooltip 可在悬停时显示星球、舰船、帝国和人口 ID。"
 	case CatMod:
-		return "扫描游戏或 MOD 文件得到的条目。发送前请确认当前版本与 DLC 已安装对应内容。"
+		return "来自扫描到的 MOD 或游戏文件。悬停说明取自本地化标题与描述；发送前请确认已启用对应 MOD。"
 	}
 	return e.Note
 }

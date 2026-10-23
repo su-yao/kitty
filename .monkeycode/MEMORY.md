@@ -11,7 +11,9 @@
 - Instructions:
   - 构建：`bash scripts/build.sh`，读取仓库根 `VERSION` 注入主程序与安装器，并执行 go test、go vet（含 windows 交叉）与 -trimpath
   - 本地预览：`PORT=<端口> XDG_CONFIG_HOME=/tmp/<dir> ./dist/linux/StellarisConsolePanel`
-  - 发布：`git push origin master` 后执行 `GH_TOKEN=$(printf 'protocol=https\nhost=github.com\n\n' | git credential fill | sed -n 's/^password=//p') gh release create <tag> dist/windows/Setup.exe dist/windows/StellarisConsolePanel.exe --repo su-yao/kitty`
+  - 发布：`GH_TOKEN=$(printf 'protocol=https\nhost=github.com\n\n' | git credential fill | sed -n 's/^password=//p') gh release create <tag> dist/windows/StellarisConsolePanel-Setup.exe dist/windows/StellarisConsolePanel.exe --repo su-yao/kitty`
+  - Windows 产物文件名：`StellarisConsolePanel.exe`、`StellarisConsolePanel-Setup.exe`；快捷方式 `StellarisConsolePanel.lnk` / `Uninstall-StellarisConsolePanel.lnk`
+  - 发布流程：先提交并 `git push origin master`，再 `gh release create <tag> dist/windows/StellarisConsolePanel-Setup.exe dist/windows/StellarisConsolePanel.exe --repo su-yao/kitty`
   - 环境无 wine/NSIS/Inno，Windows 侧只能靠交叉编译、`GOOS=windows go vet`、PE 头校验与单测验证
 
 [Project Knowledge Summary]

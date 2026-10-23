@@ -11,16 +11,18 @@ import (
 )
 
 var (
-	reShipName = regexp.MustCompile(`(?m)^\s*name\s*=\s*"?(NAME_[A-Za-z0-9_]+)"?`)
-	reShipSize = regexp.MustCompile(`(?m)^\s*ship_size\s*=\s*"?([A-Za-z0-9_]+)"?`)
-	reMegaKey  = regexp.MustCompile(`(?m)^([A-Za-z0-9_]+)\s*=\s*\{`)
-	reEventID  = regexp.MustCompile(`(?m)^\s*id\s*=\s*"?([A-Za-z0-9_.]+)"?`)
-	reLocName  = regexp.MustCompile(`(?m)^\s*([A-Za-z0-9_.]+):[0-9]*\s+"([^"]+)"`)
-	reVersion  = regexp.MustCompile(`(?i)([0-9]+\.[0-9]+(?:\.[0-9]+)?)`)
-	reGameVer  = regexp.MustCompile(`(?i)"gameVersion"\s*:\s*"v?([0-9]+(?:\.[0-9]+){1,2})"`)
-	reEventDef = regexp.MustCompile(`\b([a-z_]+)_event\s*=\s*\{`)
-	reIDField  = regexp.MustCompile(`\bid\s*=\s*"?([A-Za-z0-9_.]+)"?`)
-	reAnyName  = regexp.MustCompile(`(?m)^\s*name\s*=\s*"?([A-Za-z0-9_]+)"?`)
+	reShipName  = regexp.MustCompile(`(?m)^\s*name\s*=\s*"?(NAME_[A-Za-z0-9_]+)"?`)
+	reShipSize  = regexp.MustCompile(`(?m)^\s*ship_size\s*=\s*"?([A-Za-z0-9_]+)"?`)
+	reMegaKey   = regexp.MustCompile(`(?m)^([A-Za-z0-9_]+)\s*=\s*\{`)
+	reEventID   = regexp.MustCompile(`(?m)^\s*id\s*=\s*"?([A-Za-z0-9_.]+)"?`)
+	reLocName   = regexp.MustCompile(`(?m)^\s*([A-Za-z0-9_.]+):[0-9]*\s+"([^"]+)"`)
+	reVersion   = regexp.MustCompile(`(?i)([0-9]+\.[0-9]+(?:\.[0-9]+)?)`)
+	reGameVer   = regexp.MustCompile(`(?i)"gameVersion"\s*:\s*"v?([0-9]+(?:\.[0-9]+){1,2})"`)
+	reEventDef  = regexp.MustCompile(`\b([a-z_]+)_event\s*=\s*\{`)
+	reIDField   = regexp.MustCompile(`\bid\s*=\s*"?([A-Za-z0-9_.]+)"?`)
+	reEventDesc = regexp.MustCompile(`(?m)^\s*desc\s*=\s*"?([A-Za-z0-9_.]+)"?`)
+	reAnyName   = regexp.MustCompile(`(?m)^\s*name\s*=\s*"?([A-Za-z0-9_]+)"?`)
+	reLocMarkup = regexp.MustCompile(`£[^£]*£|\$[^$]*\$|§[!A-Za-z0-9]|\[.*?\]`)
 )
 
 // maxTextFile caps how much of a single script or localisation file is read.
@@ -325,6 +327,8 @@ func scanShips(root, source, version string, loc map[string]string) []catalog.En
 				Since:    "3.0.0",
 				Source:   source,
 				Note:     scanNote(source, version),
+				Lore:     scanLore("ship", zh, locDescNotTitle(loc, zh, name+"_DESC", name+"_desc"), source),
+				Scope:    "selected",
 			})
 		}
 	})
@@ -335,8 +339,8 @@ func scanMegas(root, source, version string, loc map[string]string) []catalog.En
 	var out []catalog.Entry
 	seen := map[string]bool{}
 	walkText(root, func(_ string, data string) {
-		for _, m := range reMegaKey.FindAllStringSubmatch(data, -1) {
-			id := m[1]
+		for _, m := range reMegaKey.FindAllStringSubmatchIndex(data, -1) {
+			id := data[m[2]:m[3]]
 			if megaSkip[id] || strings.HasPrefix(id, "#") {
 				continue
 			}
@@ -355,30 +359,82 @@ func scanMegas(root, source, version string, loc map[string]string) []catalog.En
 			if source != "vanilla" {
 				cat = catalog.CatMod
 			}
+			block := ""
+			if open := m[1] - 1; open >= 0 && data[open] == '{' {
+				block = braceBlock(data, open)
+			}
+			kind, dist := catalog.ClassifyMega(id, block)
+			desc := locDescNotTitle(loc, zh, id+"_DESC", id+"_desc", "MEGASTRUCTURE_"+id+"_DESC", "MEGASTRUCTURE_"+id+"_desc")
 			out = append(out, catalog.Entry{
 				NameZH:   zh,
 				NameEN:   id,
-				Command:  "create_megastructure " + id,
+				Command:  catalog.MegaSpawnCommandKind(id, kind, dist),
 				Category: cat,
 				Since:    "3.0.0",
 				Source:   source,
 				Note:     scanNote(source, version),
+				Lore:     scanMegaLore(zh, desc, source, kind),
+				Scope:    catalog.MegaScopeKind(kind),
 			})
 		}
 	})
 	return out
 }
 
+func braceBlock(data string, open int) string {
+	if open < 0 || open >= len(data) {
+		return ""
+	}
+	depth := 0
+	inStr := false
+	for i := open; i < len(data); i++ {
+		c := data[i]
+		if inStr {
+			if c == '"' && (i == 0 || data[i-1] != '\\') {
+				inStr = false
+			}
+			continue
+		}
+		switch c {
+		case '"':
+			inStr = true
+		case '{':
+			depth++
+		case '}':
+			depth--
+			if depth == 0 {
+				return data[open : i+1]
+			}
+		}
+	}
+	return data[open:]
+}
+
 func scanEvents(root, source, version string, loc map[string]string) []catalog.Entry {
 	var out []catalog.Entry
 	seen := map[string]bool{}
 	walkText(root, func(_ string, data string) {
-		for _, m := range reEventID.FindAllStringSubmatch(data, -1) {
-			id := m[1]
-			if !strings.Contains(id, ".") {
+		matches := reEventDef.FindAllStringSubmatchIndex(data, -1)
+		if len(matches) == 0 {
+			scanEventsByID(data, source, version, loc, seen, &out)
+			return
+		}
+		for i, m := range matches {
+			kind := data[m[2]:m[3]]
+			end := len(data)
+			if i+1 < len(matches) {
+				end = matches[i+1][0]
+			}
+			if end-m[1] > 4000 {
+				end = m[1] + 4000
+			}
+			block := data[m[1]:end]
+			idm := reIDField.FindStringSubmatch(block)
+			if len(idm) < 2 {
 				continue
 			}
-			if seen[id] {
+			id := idm[1]
+			if !strings.Contains(id, ".") || seen[id] {
 				continue
 			}
 			seen[id] = true
@@ -386,22 +442,52 @@ func scanEvents(root, source, version string, loc map[string]string) []catalog.E
 			if !keepEvent(id, zh) {
 				continue
 			}
-			cat := catalog.CatEvent
-			if source != "vanilla" {
-				cat = catalog.CatMod
+			descKey := id + ".desc"
+			if dm := reEventDesc.FindStringSubmatch(block); len(dm) > 1 {
+				descKey = dm[1]
 			}
-			out = append(out, catalog.Entry{
-				NameZH:   zh,
-				NameEN:   id,
-				Command:  "event " + id,
-				Category: cat,
-				Since:    "3.0.0",
-				Source:   source,
-				Note:     scanNote(source, version),
-			})
+			scope := eventScope(kind)
+			out = append(out, scanEventEntry(id, zh, locDescNotTitle(loc, zh, descKey, id+".desc", id+".d", id+"_desc"), source, version, scope))
 		}
 	})
 	return out
+}
+
+func scanEventsByID(data, source, version string, loc map[string]string, seen map[string]bool, out *[]catalog.Entry) {
+	for _, m := range reEventID.FindAllStringSubmatch(data, -1) {
+		id := m[1]
+		if !strings.Contains(id, ".") || seen[id] {
+			continue
+		}
+		seen[id] = true
+		zh := locPick(loc, id, id+".t", id+".title")
+		if !keepEvent(id, zh) {
+			continue
+		}
+		*out = append(*out, scanEventEntry(id, zh, locDescNotTitle(loc, zh, id+".desc", id+".d", id+"_desc"), source, version, ""))
+	}
+}
+
+func scanEventEntry(id, zh, desc, source, version, scope string) catalog.Entry {
+	cat := catalog.CatEvent
+	if source != "vanilla" {
+		cat = catalog.CatMod
+	}
+	e := catalog.Entry{
+		NameZH:   zh,
+		NameEN:   id,
+		Command:  "event " + id,
+		Category: cat,
+		Since:    "3.0.0",
+		Source:   source,
+		Note:     scanNote(source, version),
+		Lore:     scanLore("event", zh, desc, source),
+		Scope:    scope,
+	}
+	if scope == "ship" {
+		e.Target = true
+	}
+	return e
 }
 
 func loadLocNames(root string) map[string]string {
@@ -543,4 +629,72 @@ func scanNote(source, version string) string {
 		return "扫描自 " + source
 	}
 	return "扫描自 " + source + "（游戏 " + version + "）"
+}
+
+func locDesc(loc map[string]string, keys ...string) string {
+	raw := locPick(loc, keys...)
+	if raw == "" {
+		return ""
+	}
+	return cleanLoc(raw)
+}
+
+func locDescNotTitle(loc map[string]string, title string, keys ...string) string {
+	d := locDesc(loc, keys...)
+	if d == "" || d == title {
+		return ""
+	}
+	return d
+}
+
+func cleanLoc(s string) string {
+	s = strings.ReplaceAll(s, "\\n", " ")
+	s = strings.ReplaceAll(s, "\n", " ")
+	s = reLocMarkup.ReplaceAllString(s, "")
+	s = strings.Join(strings.Fields(s), " ")
+	if len([]rune(s)) > 180 {
+		r := []rune(s)
+		s = string(r[:180]) + "…"
+	}
+	return s
+}
+
+func scanLore(kind, zh, desc, source string) string {
+	mod := "来自扫描文件"
+	if source != "" && source != "vanilla" {
+		mod = "来自 " + prettySource(source)
+	}
+	body := desc
+	if body == "" {
+		switch kind {
+		case "ship":
+			body = zh + "。在选中的舰队、星球或恒星旁生成该舰船。"
+		case "mega":
+			body = zh + "。" + catalog.MegaPlacementLore("")
+		default:
+			body = zh + "。触发对应事件；星球/舰队/舰船事件需先选中正确对象。"
+		}
+	}
+	if body == zh {
+		return mod + "：" + body
+	}
+	return mod + "。" + body
+}
+
+func scanMegaLore(zh, desc, source, kind string) string {
+	place := catalog.MegaPlacementLore(kind)
+	if desc == "" {
+		desc = zh + "。" + place
+	} else if !strings.Contains(desc, place) {
+		desc = strings.TrimRight(desc, "。") + "。" + place
+	}
+	return scanLore("mega", zh, desc, source)
+}
+
+func prettySource(source string) string {
+	source = strings.TrimPrefix(source, "mod:")
+	if source == "mod" || source == "vanilla" {
+		return source
+	}
+	return "MOD " + source
 }

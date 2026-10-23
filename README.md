@@ -19,31 +19,31 @@ Windows 桌面工具：把《群星》原版与 MOD 的控制台命令做成分�
 
 ```
 女王泰坦 / add_ship NAME_Synth_Queen_Titan
-戴森球 / create_megastructure dyson_sphere_5
+戴森球 / effect solar_system = { spawn_megastructure = { type = dyson_sphere_5 planet = star } }
 合成女王 / event crisis.8005
 ```
 
 ## 安装（Windows）
 
-只需要 `Setup.exe`（自包含安装包，已嵌入主程序）。
+只需要 `StellarisConsolePanel-Setup.exe`（自包含安装包，已嵌入主程序）。
 
-1. 双击 `Setup.exe`，在 UAC 提示选择「是」
+1. 双击 `StellarisConsolePanel-Setup.exe`，在 UAC 提示选择「是」
 2. 确认安装目录（默认 `C:\Program Files\StellarisConsolePanel`）
 3. 选择是否创建开始菜单 / 桌面快捷方式
-4. 安装完成后从开始菜单打开「群星控制台面板」
+4. 安装完成后从开始菜单打开 StellarisConsolePanel
 5. 启动群星（关闭铁人与多人），点「打开控制台」或手动按 `~`，再点命令按钮
 
 静默安装：
 
 ```
-Setup.exe /S
-Setup.exe /S /DIR="D:\Games\StellarisConsolePanel"
+StellarisConsolePanel-Setup.exe /S
+StellarisConsolePanel-Setup.exe /S /DIR="D:\Games\StellarisConsolePanel"
 ```
 
 卸载：
 
 - 「设置 - 应用」里卸载「群星控制台面板」
-- 或开始菜单「卸载 群星控制台面板」
+- 或开始菜单 Uninstall-StellarisConsolePanel
 - 或 `Uninstall.exe /S`
 
 ### 可选：校验命令是否适用于当前游戏
@@ -78,7 +78,7 @@ bash scripts/build.sh
 
 产物：
 
-- `dist/windows/Setup.exe` 标准安装包（双击安装）
+- `dist/windows/StellarisConsolePanel-Setup.exe` 标准安装包（双击安装）
 - `dist/windows/StellarisConsolePanel.exe` 便携主程序
 - `dist/linux/StellarisConsolePanel` 预览
 
