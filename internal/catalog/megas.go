@@ -52,11 +52,11 @@ func MegaScopeKind(kind string) string {
 func megaTargetHint(command string) string {
 	switch {
 	case strings.Contains(command, "planet = this"):
-		return "先在游戏中选中玩家行星。居住站、星环、电弧熔炉、突触凝练机和巨兽卵会生成在该行星上。"
+		return "先在游戏中选中玩家行星。该巨构会生成在该行星上。"
 	case strings.Contains(command, "orbit_distance"):
-		return "先选中玩家星系中的恒星、星球或舰队。星门、中继器、深空擎天堡会放在星系外围，轨道角随机，避免叠在一起。"
+		return "先选中玩家星系中的恒星、星球或舰队。该巨构会放在星系外围，轨道角随机，避免叠在一起。"
 	case strings.Contains(command, "planet = star"):
-		return "先选中玩家星系中的恒星、星球或舰队。戴森球、环形世界等会包裹当前星系的恒星。"
+		return "先选中玩家星系中的恒星、星球或舰队。该巨构会包裹当前星系的恒星。"
 	default:
 		return "先选中玩家星系中的对象，再发送。"
 	}
@@ -285,8 +285,8 @@ func megas() []Entry {
 		mega("量子弹弓 完成", "Quantum Catapult", "quantum_catapult_3", "3.4.0", "中子星/脉冲星"),
 		mega("量子弹弓 基址", "Catapult Site", "quantum_catapult_0", "3.4.0", ""),
 		mega("损坏量子弹弓", "Ruined Catapult", "quantum_catapult_ruined", "3.4.0", ""),
-		mega("星环基地", "Orbital Ring", "orbital_ring", "3.4.0", "需选中行星，可能生成在恒星"),
-		mega("损坏星环基地", "Ruined Orbital Ring", "orbital_ring_ruined", "3.4.0", "可能无法修复"),
+		mega("星环基地", "Orbital Ring", "orbital_ring", "3.4.0", "需选中行星"),
+		mega("损坏星环基地", "Ruined Orbital Ring", "orbital_ring_ruined", "3.4.0", "需选中行星，可能无法修复"),
 		mega("以太相引擎 完成", "Aetherophasic Engine", "crisis_sphere_4", "3.0.0", "化身天灾终局"),
 		mega("以太相引擎 框架", "Engine Frame", "crisis_sphere_0", "3.0.0", ""),
 		mega("以太相引擎 阶段3", "Engine Stage 3", "crisis_sphere_3", "3.0.0", ""),

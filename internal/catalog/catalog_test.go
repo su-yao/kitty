@@ -353,6 +353,45 @@ func TestClassifyMegaFromScript(t *testing.T) {
 	}
 }
 
+func TestMegaLoreIncludesPlacement(t *testing.T) {
+	s := New()
+	page := s.List(CatMega, "", "4.5.0", 1, 800)
+	if page.Total == 0 {
+		t.Fatal("empty mega catalog")
+	}
+	for _, e := range page.Items {
+		id, ok := megaType(e.Command)
+		if !ok {
+			continue
+		}
+		place := MegaPlacementLore(megaKindOf(id))
+		if place == "" {
+			t.Fatalf("%s empty placement lore", e.NameZH)
+		}
+		if !strings.Contains(e.Lore, place) {
+			t.Fatalf("%s lore missing placement %q: %q", e.NameZH, place, e.Lore)
+		}
+		if e.TargetHint == "" {
+			t.Fatalf("%s missing target hint", e.NameZH)
+		}
+		if loreMega[id] == "" {
+			t.Fatalf("%s missing specific loreMega[%s]", e.NameZH, id)
+		}
+	}
+	dyson := s.List(CatMega, "戴森球 完成", "4.4.6", 1, 10)
+	if dyson.Total == 0 || !strings.Contains(dyson.Items[0].Lore, "包裹当前星系的恒星") {
+		t.Fatalf("dyson lore should mention star wrap: %+v", dyson.Items)
+	}
+	gate := s.List(CatMega, "星门 完成", "4.4.6", 1, 10)
+	if gate.Total == 0 || !strings.Contains(gate.Items[0].Lore, "星系外围") {
+		t.Fatalf("gateway lore should mention rim: %+v", gate.Items)
+	}
+	hab := s.List(CatMega, "居住站核心", "4.4.6", 1, 10)
+	if hab.Total == 0 || !strings.Contains(hab.Items[0].Lore, "需先选中行星") {
+		t.Fatalf("habitat lore should mention planet: %+v", hab.Items)
+	}
+}
+
 func TestAllMegaSpawnCommandsHavePlacement(t *testing.T) {
 	s := New()
 	page := s.List(CatMega, "", "4.5.0", 1, 800)
@@ -398,6 +437,29 @@ func TestScannedModLore(t *testing.T) {
 	}
 	if !strings.Contains(e.Command, "orbit_distance") && !strings.Contains(e.Command, "planet = star") {
 		t.Fatalf("mod mega should use spawn placement: %s", e.Command)
+	}
+}
+
+func TestRemainingCategoriesHaveSpecificLore(t *testing.T) {
+	s := New()
+	for _, cat := range []string{CatTech, CatRelic, CatPlanet, CatEmpire, CatDebug} {
+		page := s.List(cat, "", "4.5.0", 1, 800)
+		if page.Total == 0 {
+			t.Fatalf("empty %s catalog", cat)
+		}
+		generic := loreByCategory(Entry{Category: cat})
+		specific := 0
+		for _, e := range page.Items {
+			if e.Lore == "" {
+				t.Fatalf("%s %s missing lore", cat, e.Command)
+			}
+			if e.Lore != generic {
+				specific++
+			}
+		}
+		if specific == 0 {
+			t.Fatalf("%s has only generic lore", cat)
+		}
 	}
 }
 

@@ -209,7 +209,7 @@ function showTip(ev, item) {
   const cmd = previewCommand(item);
   const bits = [
     `<div class="tip-title">${escapeHtml(item.name_zh)}</div>`,
-    `<div class="tip-row"><span>目标</span>${escapeHtml(targetSummary(item))}</div>`,
+    `<div class="tip-row"><span>目标</span><div class="tip-body">${escapeHtml(targetSummary(item))}</div></div>`,
     `<div class="tip-row"><span>命令</span><code>${escapeHtml(cmd)}</code></div>`,
   ];
   if (item.lore) bits.push(`<div class="tip-lore">${escapeHtml(item.lore)}</div>`);

@@ -82,7 +82,7 @@ label.target select { min-width: 110px; }
 .tip {
   position: fixed;
   z-index: 40;
-  max-width: 420px;
+  max-width: 480px;
   padding: 10px 12px;
   background: #0f1a2e;
   border: 1px solid #3a4d73;
@@ -94,11 +94,20 @@ label.target select { min-width: 110px; }
   pointer-events: none;
 }
 .tip-title { font-weight: 700; margin-bottom: 6px; color: var(--accent); }
-.tip-row { display: flex; gap: 8px; margin: 3px 0; }
+.tip-row { display: flex; gap: 8px; margin: 3px 0; align-items: flex-start; }
 .tip-row span { flex: 0 0 36px; color: var(--muted); }
-.tip-row code { color: var(--accent2); font-size: 11px; }
+.tip-row code {
+  flex: 1;
+  color: var(--accent2);
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  min-width: 0;
+}
 .tip-lore { margin-top: 8px; color: #d5def0; }
 .tip-note, .tip-en { margin-top: 4px; color: var(--muted); font-size: 11px; }
+.tip-row .tip-body { min-width: 0; flex: 1; }
 label.check { flex-direction: row; align-items: center; gap: 5px; padding-bottom: 7px; white-space: nowrap; }
 label.check input { padding: 0; }
 .empty { grid-column: 1 / -1; grid-row: 1 / -1; color: var(--muted); font-size: 14px; display: grid; place-items: center; }
