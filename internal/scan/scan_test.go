@@ -137,6 +137,15 @@ func TestKeepFilters(t *testing.T) {
 	if !keepMega("dyson_sphere_5", "戴森球") {
 		t.Fatal("dyson")
 	}
+	if !keepMega("cosmogenesis_needle", "") {
+		t.Fatal("cosmogenesis")
+	}
+	if !keepMega("civilian_arkship_megastructure", "") {
+		t.Fatal("arkship")
+	}
+	if !keepMega("grand_archive_0", "") {
+		t.Fatal("grand archive")
+	}
 	if keepEvent("test.1", "") {
 		t.Fatal("test event")
 	}

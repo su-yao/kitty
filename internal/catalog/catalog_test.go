@@ -59,6 +59,9 @@ func TestBuiltinIntegrity(t *testing.T) {
 			t.Fatalf("duplicate entry in category %s: %s", e.Category, e.Command)
 		}
 		seen[key] = true
+		if name, ok := shipDesign(e.Command); ok && strings.ContainsAny(name, " \t") {
+			t.Fatalf("add_ship design must be a single token: %s", e.Command)
+		}
 	}
 }
 
@@ -351,6 +354,14 @@ func TestClassifyMegaFromScript(t *testing.T) {
 	if kind != megaRim || dist != 72 {
 		t.Fatalf("script orbit_distance should be used: %s %d", kind, dist)
 	}
+	kind, _ = ClassifyMega("mystery_planet", "build_on_planet = yes")
+	if kind != megaPlanet {
+		t.Fatalf("build_on_planet should need a planet, got %s", kind)
+	}
+	kind, _ = ClassifyMega("dyson_sphere_5", "possible = { is_star = no }")
+	if kind != megaPlanet {
+		t.Fatalf("star mega with is_star = no should move to planet, got %s", kind)
+	}
 }
 
 func TestMegaLoreIncludesPlacement(t *testing.T) {
@@ -440,25 +451,52 @@ func TestScannedModLore(t *testing.T) {
 	}
 }
 
+func TestCreateNavyIsNotAddShip(t *testing.T) {
+	s := New()
+	page := s.List(CatShip, "满编制海军", "4.4.6", 1, 10)
+	if page.Total == 0 {
+		t.Fatal("create navy missing")
+	}
+	found := false
+	for _, e := range page.Items {
+		if e.NameZH != "满编制海军" && e.NameZH != "半编制海军" {
+			continue
+		}
+		found = true
+		if strings.HasPrefix(e.Command, "add_ship ") {
+			t.Fatalf("%s must not wrap create_navy with add_ship: %s", e.NameZH, e.Command)
+		}
+		if !strings.HasPrefix(e.Command, "create_navy ") {
+			t.Fatalf("%s command %s", e.NameZH, e.Command)
+		}
+		if strings.Contains(e.Lore, "在当前选中的舰队") {
+			t.Fatalf("%s still using generic ship lore: %q", e.NameZH, e.Lore)
+		}
+	}
+	if !found {
+		t.Fatal("create navy entries not found")
+	}
+}
+
 func TestRemainingCategoriesHaveSpecificLore(t *testing.T) {
 	s := New()
-	for _, cat := range []string{CatTech, CatRelic, CatPlanet, CatEmpire, CatDebug} {
-		page := s.List(cat, "", "4.5.0", 1, 800)
-		if page.Total == 0 {
-			t.Fatalf("empty %s catalog", cat)
+	page := s.List("", "", "4.5.0", 1, 800)
+	if page.Total == 0 {
+		t.Fatal("empty catalog")
+	}
+	for _, e := range page.Items {
+		if e.Lore == "" {
+			t.Fatalf("%s %s missing lore", e.Category, e.Command)
 		}
-		generic := loreByCategory(Entry{Category: cat})
-		specific := 0
-		for _, e := range page.Items {
-			if e.Lore == "" {
-				t.Fatalf("%s %s missing lore", cat, e.Command)
-			}
-			if e.Lore != generic {
-				specific++
-			}
+		g := loreByCategory(e)
+		if e.Lore == g {
+			t.Fatalf("%s %s uses generic lore: %q", e.Category, e.Command, e.Lore)
 		}
-		if specific == 0 {
-			t.Fatalf("%s has only generic lore", cat)
+		if id, ok := megaType(e.Command); ok {
+			place := MegaPlacementLore(megaKindOf(id))
+			if e.Lore == strings.TrimRight(g, "。")+"。"+place {
+				t.Fatalf("%s only has category lore plus placement: %q", e.Command, e.Lore)
+			}
 		}
 	}
 }

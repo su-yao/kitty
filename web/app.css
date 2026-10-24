@@ -92,6 +92,8 @@ label.target select { min-width: 110px; }
   font-size: 12px;
   line-height: 1.45;
   pointer-events: none;
+  max-height: calc(100vh - 28px);
+  overflow: hidden;
 }
 .tip-title { font-weight: 700; margin-bottom: 6px; color: var(--accent); }
 .tip-row { display: flex; gap: 8px; margin: 3px 0; align-items: flex-start; }
@@ -105,9 +107,9 @@ label.target select { min-width: 110px; }
   word-break: break-all;
   min-width: 0;
 }
-.tip-lore { margin-top: 8px; color: #d5def0; }
-.tip-note, .tip-en { margin-top: 4px; color: var(--muted); font-size: 11px; }
-.tip-row .tip-body { min-width: 0; flex: 1; }
+.tip-lore { margin-top: 8px; color: #d5def0; overflow-wrap: anywhere; }
+.tip-note, .tip-en { margin-top: 4px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.tip-row .tip-body { min-width: 0; flex: 1; overflow-wrap: anywhere; }
 label.check { flex-direction: row; align-items: center; gap: 5px; padding-bottom: 7px; white-space: nowrap; }
 label.check input { padding: 0; }
 .empty { grid-column: 1 / -1; grid-row: 1 / -1; color: var(--muted); font-size: 14px; display: grid; place-items: center; }

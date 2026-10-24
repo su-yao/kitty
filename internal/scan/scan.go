@@ -570,9 +570,11 @@ func keepMega(id, zh string) bool {
 		"matter_decompressor", "mega_shipyard", "strategic_coordination",
 		"interstellar_assembly", "mega_art", "sentry", "lgate", "hyper_relay",
 		"quantum_catapult", "orbital_ring", "stellar_cannon", "arc_furnace",
-		"dyson_swarm", "megastructure", "gigastructure", "giga_", "aot_",
+		"dyson_swarm", "dyson_gun", "megastructure", "gigastructure", "giga_", "aot_",
 		"katzen", "compound", "ehof", "birch", "nidavellir", "star_lifter",
 		"neutronium_giga", "penrose", "yggdrasil", "behemoth",
+		"cosmogenesis", "shroud_seal", "grand_archive", "citadel",
+		"arkship", "waystation", "crisis_sphere", "crucible",
 	}
 	for _, p := range usable {
 		if strings.Contains(low, p) {
