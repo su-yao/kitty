@@ -199,6 +199,10 @@ func eventScope(kind string) string {
 		return "first_contact"
 	case "system":
 		return "system"
+	case "situation":
+		return "situation"
+	case "megastructure":
+		return "selected"
 	}
 	return "country"
 }

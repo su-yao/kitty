@@ -146,6 +146,12 @@ func TestKeepFilters(t *testing.T) {
 	if !keepMega("grand_archive_0", "") {
 		t.Fatal("grand archive")
 	}
+	if !keepMega("orbital_arc_furnace_4", "") {
+		t.Fatal("arc furnace")
+	}
+	if !keepMega("spy_orb_4", "") {
+		t.Fatal("sentry array")
+	}
 	if keepEvent("test.1", "") {
 		t.Fatal("test event")
 	}
@@ -175,6 +181,7 @@ l_simp_chinese:
  test.1:0 "国家事件"
  test.2:0 "星球事件"
  test.3:0 "舰船事件"
+ test.4:0 "局势事件"
 `), 0644)
 	_ = os.WriteFile(filepath.Join(evtDir, "demo.txt"), []byte(`
 country_event = {
@@ -185,6 +192,9 @@ planet_event = {
 }
 ship_event = {
 	id = test.3
+}
+situation_event = {
+	id = test.4
 }
 `), 0644)
 	_ = os.WriteFile(filepath.Join(shipDir, "demo.txt"), []byte(`
@@ -200,7 +210,8 @@ d1 = {
 	if !r.EventsVerified || !r.DesignsVerified {
 		t.Fatalf("expected verification, got %+v", r)
 	}
-	if r.EventScopes["test.1"] != "country" || r.EventScopes["test.2"] != "planet" || r.EventScopes["test.3"] != "ship" {
+	if r.EventScopes["test.1"] != "country" || r.EventScopes["test.2"] != "planet" ||
+		r.EventScopes["test.3"] != "ship" || r.EventScopes["test.4"] != "situation" {
 		t.Fatalf("wrong scopes: %+v", r.EventScopes)
 	}
 	if !r.DesignNames["NAME_Titan"] {

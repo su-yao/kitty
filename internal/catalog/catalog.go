@@ -18,7 +18,7 @@ type Entry struct {
 	Source   string `json:"source"`
 	Note     string `json:"note,omitempty"`
 	// Scope is the object that must be selected before the command works:
-	// country, planet, fleet, ship, situation or first_contact.
+	// country, planet, fleet, ship, leader, situation, first_contact or selected.
 	Scope string `json:"scope,omitempty"`
 	// Target means the command needs an extra numeric target id, as ship
 	// events do: event <id> <target id>.
