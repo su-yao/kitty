@@ -46,7 +46,7 @@ func MegaScopeKind(kind string) string {
 	if kind == megaPlanet {
 		return "planet"
 	}
-	return "selected"
+	return "system"
 }
 
 func megaTargetHint(command string) string {

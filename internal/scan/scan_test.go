@@ -152,6 +152,18 @@ func TestKeepFilters(t *testing.T) {
 	if !keepMega("spy_orb_4", "") {
 		t.Fatal("sentry array")
 	}
+	if !keepMega("lgate_base", "") {
+		t.Fatal("l-gate")
+	}
+	if !keepMega("think_tank_3", "") {
+		t.Fatal("science nexus")
+	}
+	if !keepMega("hyper_relay", "") {
+		t.Fatal("hyper relay")
+	}
+	if !keepMega("habitat_central_complex", "") {
+		t.Fatal("habitat")
+	}
 	if keepEvent("test.1", "") {
 		t.Fatal("test event")
 	}

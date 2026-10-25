@@ -267,12 +267,18 @@ func TestMegaSpawnAvoidsStarCenter(t *testing.T) {
 	if !strings.Contains(cmd, "orbit_angle = random") {
 		t.Fatalf("gateway should pick a random rim angle: %s", cmd)
 	}
+	if page.Items[0].Scope != "system" {
+		t.Fatalf("gateway should require a system, got %q", page.Items[0].Scope)
+	}
 	if !strings.Contains(page.Items[0].TargetHint, "外围") {
 		t.Fatalf("gateway hint should mention the rim: %q", page.Items[0].TargetHint)
 	}
 	dyson := s.List(CatMega, "戴森球 完成", "4.4.6", 1, 10)
 	if dyson.Total == 0 || !strings.Contains(dyson.Items[0].Command, "planet = star") {
 		t.Fatalf("dyson should wrap the star: %+v", dyson.Items)
+	}
+	if dyson.Items[0].Scope != "system" {
+		t.Fatalf("dyson should require a system, got %q", dyson.Items[0].Scope)
 	}
 	if strings.Contains(dyson.Items[0].Command, "orbit_distance") {
 		t.Fatalf("dyson should not offset from the star: %s", dyson.Items[0].Command)
@@ -421,6 +427,9 @@ func TestAllMegaSpawnCommandsHavePlacement(t *testing.T) {
 				t.Fatalf("%s planet spawn needs planet scope: %s", e.NameZH, e.Command)
 			}
 			continue
+		}
+		if e.Scope != "system" {
+			t.Fatalf("%s star/rim spawn needs system scope, got %q: %s", e.NameZH, e.Scope, e.Command)
 		}
 		if star && !rim {
 			continue
