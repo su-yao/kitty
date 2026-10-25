@@ -90,7 +90,7 @@ var loreExact = map[string]string{
 	"imperial_authority 50":                "星海帝国的帝国权威，用于帝制联邦集权。",
 	"astral_threads 5000":                  "星界丝线。星界裂隙 DLC，用于裂隙探索与星界动作。",
 	"advanced_logic 5000":                  "高级逻辑。宇宙创生飞升的特殊资源，用于视界刺针。",
-	"instant_build":                        "瞬间完成建造与升级。对玩家和 AI 同时生效，用完务必关闭。",
+	"instant_build":                        "瞬间完成舰船与巨构的建造、升级。对玩家和 AI 同时生效，用完务必关闭。",
 	"tweakergui instant_move":              "舰队右键即可瞬移到目标星系。测试用开关。",
 	"invincible":                           "玩家舰队不受伤害。仅对舰队生效。",
 	"damage 1000":                          "对当前选中舰队造成 1000 点伤害。",

@@ -105,6 +105,11 @@ func events() []Entry {
 		"event ancrel.4058":     {"planet", false},
 		"event enclave.220":     {"planet", false},
 		"event anomaly.186":     {"planet", false},
+		"complete_first_contact": {"first_contact", false},
+		"add_first_contact_clues 10": {"first_contact", false},
+		"effect add_situation_progress = 100": {"situation", false},
+		"effect destroy_situation = this": {"situation", false},
+		"effect destroy_fleet = this": {"fleet", false},
 	}
 	for i := range list {
 		if r, ok := reqs[list[i].Command]; ok {

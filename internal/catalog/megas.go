@@ -312,6 +312,5 @@ func megas() []Entry {
 		mega("科研方舟", "Science Arkship", "science_arkship_megastructure", "4.4.0", ""),
 		mega("驿站", "Waystation", "waystation_megastructure", "4.4.0", ""),
 		e("移除选中巨构", "Remove megastructure", "effect remove_megastructure = this", CatMega, "3.0.0", "先选中巨构"),
-		e("瞬间建造完成巨构", "Instant build on", "instant_build", CatMega, "3.0.0", "开关"),
 	}
 }

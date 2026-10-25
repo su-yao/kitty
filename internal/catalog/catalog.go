@@ -304,6 +304,9 @@ func (s *Store) decorate(e Entry) Entry {
 			e.Scope = MegaScope(id)
 		}
 	}
+	if e.Scope == "" {
+		e.Scope = inferScope(e.Command)
+	}
 	if e.Scope == "ship" {
 		e.Target = true
 	} else if e.Scope != "" && e.Scope != "selected" {
@@ -312,6 +315,16 @@ func (s *Store) decorate(e Entry) Entry {
 	e = fillTargets(e)
 	if _, ok := megaType(e.Command); ok {
 		e.TargetHint = megaTargetHint(e.Command)
+	}
+	switch e.Command {
+	case "own":
+		e.TargetHint = "先在游戏中左键选中舰队、星球或巨构。命令会把所有权转给玩家。"
+	case "effect remove_megastructure = this":
+		e.TargetHint = "先在游戏中选中要拆除的巨构。"
+	case "finish_rift_stage":
+		e.TargetHint = "先在游戏中选中星界裂隙。"
+	case "effect enrage_behemoth":
+		e.TargetHint = "先选中玩家舰队、恒星基地或星球。"
 	}
 	if e.Lore == "" {
 		e.Lore = loreFor(e)
@@ -379,6 +392,46 @@ func fillTargets(e Entry) Entry {
 		e.TargetHint = "默认作用于玩家帝国（ID 0），无需额外目标 ID。"
 	}
 	return e
+}
+
+func inferScope(cmd string) string {
+	switch {
+	case cmd == "own" || cmd == "effect remove_megastructure = this" ||
+		cmd == "finish_rift_stage" || cmd == "effect enrage_behemoth":
+		return "selected"
+	case cmd == "invincible" || strings.HasPrefix(cmd, "damage ") ||
+		cmd == "effect destroy_fleet = this" || cmd == "break_fleet_contract":
+		return "fleet"
+	case cmd == "complete_first_contact" || strings.HasPrefix(cmd, "add_first_contact_clues "):
+		return "first_contact"
+	case strings.Contains(cmd, "add_situation_progress") || strings.Contains(cmd, "destroy_situation"):
+		return "situation"
+	case strings.HasPrefix(cmd, "skills "):
+		return "leader"
+	case cmd == "branchoffice" || cmd == "finish_arc_stage" || planetScoped(cmd):
+		return "planet"
+	}
+	return ""
+}
+
+func planetScoped(cmd string) bool {
+	switch cmd {
+	case "finish_terraform", "grow_pops", "control":
+		return true
+	}
+	for _, p := range []string{
+		"planet_class ", "planet_size ", "planet_happiness ", "planet_ascension_tier ",
+		"colonize ", "add_pops ", "add_anomaly ",
+		"effect destroy_colony", "effect add_planet_devastation",
+		"effect add_district", "effect add_building",
+		"effect add_deposit", "effect remove_deposit",
+		"effect create_archaeological_site", "effect set_planet_flag",
+	} {
+		if strings.HasPrefix(cmd, p) {
+			return true
+		}
+	}
+	return false
 }
 
 func needsCountryID(cmd string) bool {

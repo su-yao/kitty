@@ -24,7 +24,6 @@ func planets() []Entry {
 		e("添加人口 10", "Add pops 10", "add_pops 1 10", CatPlanet, "3.0.0", "物种 ID 数量，空命令列出全部 ID"),
 		e("人口增长加速", "Grow pops", "grow_pops", CatPlanet, "3.0.0", "对选中星球推进一次增长"),
 		e("控制选中星球", "Control", "control", CatPlanet, "3.0.0", "占领星球"),
-		e("拥有选中星球", "Own planet", "own", CatPlanet, "3.0.0", ""),
 		e("歼灭选中殖民", "Destroy colony", "effect destroy_colony", CatPlanet, "3.0.0", ""),
 		e("行星荒芜 +50", "Devastation +50", "effect add_planet_devastation = 50", CatPlanet, "3.0.0", ""),
 		e("行星荒芜清零", "Devastation 0", "effect add_planet_devastation = -100", CatPlanet, "3.0.0", ""),

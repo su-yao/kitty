@@ -19,11 +19,11 @@ func TestCompareVer(t *testing.T) {
 
 func TestVersionFilter(t *testing.T) {
 	s := New()
-	page := s.List(CatShip, "女王泰坦", "3.0.0", 1, 50)
+	page := s.List(CatCrisis, "女王泰坦", "3.0.0", 1, 50)
 	if page.Total != 0 {
 		t.Fatalf("3.0 should hide synth queen, got %d", page.Total)
 	}
-	page = s.List(CatShip, "女王泰坦", "3.12.0", 1, 50)
+	page = s.List(CatCrisis, "女王泰坦", "3.12.0", 1, 50)
 	if page.Total == 0 {
 		t.Fatal("3.12 should show synth queen")
 	}
@@ -512,5 +512,78 @@ func TestEventScopesAreValid(t *testing.T) {
 		if e.Target && e.Scope != "ship" {
 			t.Fatalf("target id is only used by ship events: %s", e.Command)
 		}
+	}
+}
+
+func TestBuiltinCommandsAreUnique(t *testing.T) {
+	seen := map[string]string{}
+	for _, e := range builtin() {
+		if cat, ok := seen[e.Command]; ok {
+			t.Fatalf("command %q is in both %s and %s", e.Command, cat, e.Category)
+		}
+		seen[e.Command] = e.Category
+	}
+	if seen["instant_build"] != CatShip {
+		t.Fatalf("instant_build should stay in ship, got %q", seen["instant_build"])
+	}
+	if seen["own"] != CatShip {
+		t.Fatalf("own should stay in ship, got %q", seen["own"])
+	}
+}
+
+func TestInferredScopes(t *testing.T) {
+	s := New()
+	page := s.List("", "", "4.5.0", 1, 800)
+	want := map[string]string{
+		"planet_class pc_gaia":                   "planet",
+		"colonize 1":                             "planet",
+		"effect destroy_colony":                  "planet",
+		"branchoffice":                           "planet",
+		"finish_arc_stage":                       "planet",
+		"damage 1000":                            "fleet",
+		"invincible":                             "fleet",
+		"effect destroy_fleet = this":            "fleet",
+		"complete_first_contact":                 "first_contact",
+		"effect add_situation_progress = 100":    "situation",
+		"own":                                    "selected",
+		"effect remove_megastructure = this":     "selected",
+		"finish_rift_stage":                      "selected",
+		"effect enrage_behemoth":                 "selected",
+		"skills 10":                              "leader",
+		"instant_build":                          "",
+	}
+	got := map[string]string{}
+	for _, e := range page.Items {
+		if _, ok := want[e.Command]; ok {
+			got[e.Command] = e.Scope
+		}
+	}
+	for cmd, scope := range want {
+		if got[cmd] != scope {
+			t.Fatalf("%s scope=%q want %q", cmd, got[cmd], scope)
+		}
+	}
+	var own Entry
+	foundOwn := false
+	for _, e := range page.Items {
+		if e.Command == "own" {
+			if foundOwn {
+				t.Fatal("own should appear once")
+			}
+			foundOwn = true
+			own = e
+		}
+		if e.Command == "instant_build" && e.Category != CatShip {
+			t.Fatalf("instant_build leaked into %s", e.Category)
+		}
+		if e.Command == "own" && e.Category != CatShip {
+			t.Fatalf("own leaked into %s", e.Category)
+		}
+	}
+	if !foundOwn {
+		t.Fatal("own missing")
+	}
+	if !strings.Contains(own.TargetHint, "巨构") {
+		t.Fatalf("own hint should mention megastructures: %q", own.TargetHint)
 	}
 }
