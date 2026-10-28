@@ -512,7 +512,7 @@ func TestRemainingCategoriesHaveSpecificLore(t *testing.T) {
 
 func TestEventScopesAreValid(t *testing.T) {
 	valid := map[string]bool{"": true, "country": true, "planet": true, "fleet": true, "ship": true,
-		"leader": true, "starbase": true, "first_contact": true, "system": true, "situation": true,
+		"leader": true, "pop": true, "starbase": true, "first_contact": true, "system": true, "situation": true,
 		"selected": true}
 	for _, e := range events() {
 		if !valid[e.Scope] {
@@ -540,6 +540,33 @@ func TestBuiltinCommandsAreUnique(t *testing.T) {
 	}
 }
 
+func TestPreCommands(t *testing.T) {
+	s := New()
+	page := s.List("", "", "4.5.0", 1, 800)
+	want := map[string][]string{
+		"event crisis.1200":             {"event crisis.1000"},
+		"event utopia.3320":             {"event utopia.3308"},
+		"event graygoo.1":               {"event distar.11000"},
+		"event graygoo.100":             {"event distar.11000"},
+		"event distar.13000":            {"event distar.11000"},
+		"event fallen_empires_awakening.1": {"play 1"},
+		"event marauder.500":            {"play 1"},
+		"activate_relic r_unbidden_warlock": {"add_relic r_unbidden_warlock"},
+		"instant_build":                 nil,
+	}
+	got := map[string][]string{}
+	for _, e := range page.Items {
+		if _, ok := want[e.Command]; ok {
+			got[e.Command] = e.PreCommands
+		}
+	}
+	for cmd, pre := range want {
+		if strings.Join(got[cmd], "|") != strings.Join(pre, "|") {
+			t.Fatalf("%s pre=%v want %v", cmd, got[cmd], pre)
+		}
+	}
+}
+
 func TestInferredScopes(t *testing.T) {
 	s := New()
 	page := s.List("", "", "4.5.0", 1, 800)
@@ -559,6 +586,11 @@ func TestInferredScopes(t *testing.T) {
 		"finish_rift_stage":                      "selected",
 		"effect enrage_behemoth":                 "selected",
 		"skills 10":                              "leader",
+		"spawn_astral_rift":                      "system",
+		"kill_pop 0":                             "pop",
+		"kill_leader 0":                          "leader",
+		"kill_ruler":                             "leader",
+		"add_trait_leader 0 leader_trait_gale_speed": "leader",
 		"instant_build":                          "",
 	}
 	got := map[string]string{}
@@ -594,5 +626,117 @@ func TestInferredScopes(t *testing.T) {
 	}
 	if !strings.Contains(own.TargetHint, "巨构") {
 		t.Fatalf("own hint should mention megastructures: %q", own.TargetHint)
+	}
+	for _, e := range page.Items {
+		switch e.Command {
+		case "spawn_astral_rift":
+			if !strings.Contains(e.TargetHint, "裂隙") {
+				t.Fatalf("rift hint should mention 裂隙: %q", e.TargetHint)
+			}
+			if strings.Contains(e.TargetHint, "星门") {
+				t.Fatalf("rift hint should not reuse mega text: %q", e.TargetHint)
+			}
+		case "kill_pop 0":
+			if !strings.Contains(e.TargetHint, "人口") {
+				t.Fatalf("kill_pop hint should mention 人口: %q", e.TargetHint)
+			}
+		case "kill_leader 0":
+			if !strings.Contains(e.TargetHint, "领袖") {
+				t.Fatalf("kill_leader hint should mention 领袖: %q", e.TargetHint)
+			}
+		}
+	}
+}
+
+func TestApplyTarget(t *testing.T) {
+	cases := []struct {
+		cmd, mode, id, want string
+	}{
+		{"kill_pop 0", "last", "12", "kill_pop 12"},
+		{"kill_leader 0", "first", "3", "kill_leader 3"},
+		{"play 0", "last", "7", "play 7"},
+		{"add_trait_leader 0 leader_trait_gale_speed", "first", "4", "add_trait_leader 4 leader_trait_gale_speed"},
+		{"add_intel 1 100", "first", "8", "add_intel 8 100"},
+		{"add_loyalty 1 100", "first", "6", "add_loyalty 6 100"},
+		{"add_opinion 0 1 100", "second", "9", "add_opinion 0 9 100"},
+		{"add_trust 0 1 100", "second", "2", "add_trust 0 2 100"},
+		{"war 0 1 wg_conquest", "second", "5", "war 0 5 wg_conquest"},
+		{"casusbelli cb_subjugation 2", "first", "4", "casusbelli cb_subjugation 4"},
+		{"surrender 1", "first", "3", "surrender 3"},
+		{"event akx.8888", "append", "5", "event akx.8888 5"},
+		{"event akx.8888 0", "append", "5", "event akx.8888 5"},
+		{"cash 5000", "", "1", "cash 5000"},
+		{"play 0", "last", "x", "play 0"},
+		{"play 0", "", "3", "play 0"},
+	}
+	for _, c := range cases {
+		got := ApplyTarget(c.cmd, c.mode, c.id)
+		if got != c.want {
+			t.Fatalf("ApplyTarget(%q,%q,%q)=%q want %q", c.cmd, c.mode, c.id, got, c.want)
+		}
+	}
+}
+
+func TestTargetModeAndDLC(t *testing.T) {
+	s := New()
+	page := s.List("", "", "4.5.0", 1, 800)
+	wantMode := map[string]string{
+		"kill_pop 0":          "last",
+		"kill_leader 0":       "first",
+		"play 0":              "last",
+		"play 1":              "last",
+		"add_trait_leader 0 leader_trait_gale_speed": "first",
+		"add_intel 1 100":     "first",
+		"add_opinion 0 1 100": "second",
+		"war 0 1 wg_conquest": "second",
+		"event akx.8888":      "append",
+		"instant_build":       "",
+		"cash 5000":           "",
+	}
+	wantDLC := map[string]string{
+		"spawn_astral_rift":                    "星界位面",
+		"event crisis.8005":                    "机械纪元",
+		"event akx.8888":                       "地平线信号",
+		"event graygoo.1":                      "遥远繁星",
+		"research_technology tech_titans":      "天启",
+		"research_technology tech_juggernaut":  "联邦",
+		"add_relic r_head_of_zarqlan":          "远古遗物",
+		"add_ship NAME_Synth_Queen_Titan":      "机械纪元",
+		"instant_build":                        "",
+	}
+	gotMode := map[string]string{}
+	gotDLC := map[string]string{}
+	var lgate Entry
+	for _, e := range page.Items {
+		if _, ok := wantMode[e.Command]; ok {
+			gotMode[e.Command] = e.TargetMode
+		}
+		if _, ok := wantDLC[e.Command]; ok {
+			gotDLC[e.Command] = e.DLC
+		}
+		if id, ok := megaType(e.Command); ok && id == "lgate_base" {
+			lgate = e
+		}
+	}
+	for cmd, mode := range wantMode {
+		if gotMode[cmd] != mode {
+			t.Fatalf("%s target_mode=%q want %q", cmd, gotMode[cmd], mode)
+		}
+	}
+	for cmd, dlc := range wantDLC {
+		if gotDLC[cmd] != dlc {
+			t.Fatalf("%s dlc=%q want %q", cmd, gotDLC[cmd], dlc)
+		}
+	}
+	if lgate.DLC != "遥远繁星" {
+		t.Fatalf("lgate dlc=%q", lgate.DLC)
+	}
+	horizon := s.List(CatEvent, "地平线信号", "4.4.6", 1, 10)
+	if horizon.Total == 0 || !horizon.Items[0].Target || horizon.Items[0].TargetMode != "append" {
+		t.Fatalf("horizon signal target: %+v", horizon.Items)
+	}
+	pop := s.List(CatDebug, "杀死人口", "4.4.6", 1, 10)
+	if pop.Total == 0 || !pop.Items[0].Target || pop.Items[0].TargetMode != "last" {
+		t.Fatalf("kill_pop target: %+v", pop.Items)
 	}
 }

@@ -18,11 +18,12 @@ type Entry struct {
 	Source   string `json:"source"`
 	Note     string `json:"note,omitempty"`
 	// Scope is the object that must be selected before the command works:
-	// country, planet, fleet, ship, leader, situation, first_contact or selected.
+	// country, planet, fleet, ship, leader, pop, situation, first_contact, system or selected.
 	Scope string `json:"scope,omitempty"`
-	// Target means the command needs an extra numeric target id, as ship
-	// events do: event <id> <target id>.
+	// Target means a numeric id from the picker is written into the command.
 	Target bool `json:"target,omitempty"`
+	// TargetMode is append, first, second or last.
+	TargetMode string `json:"target_mode,omitempty"`
 	// DLC names the required expansion, for example 天启 or 机械纪元.
 	DLC string `json:"dlc,omitempty"`
 	// Missing is set after a scan when the event id or ship design used by a
@@ -37,6 +38,8 @@ type Entry struct {
 	Lore string `json:"lore,omitempty"`
 	// TargetHint explains which in-game object the command acts on.
 	TargetHint string `json:"target_hint,omitempty"`
+	// PreCommands are typed and confirmed before Command, in order.
+	PreCommands []string `json:"pre_commands,omitempty"`
 }
 
 type TargetOpt struct {
@@ -307,12 +310,19 @@ func (s *Store) decorate(e Entry) Entry {
 	if e.Scope == "" {
 		e.Scope = inferScope(e.Command)
 	}
-	if e.Scope == "ship" {
+	if e.TargetMode == "" {
+		e.TargetMode = inferTargetMode(e.Command, e.Scope, e.Target)
+	}
+	if e.TargetMode != "" {
 		e.Target = true
+	} else if e.Scope == "ship" {
+		e.Target = true
+		e.TargetMode = "append"
 	} else if e.Scope != "" && e.Scope != "selected" {
 		e.Target = false
 	}
 	e = fillTargets(e)
+	e = applyDLC(e)
 	if _, ok := megaType(e.Command); ok {
 		e.TargetHint = megaTargetHint(e.Command)
 	}
@@ -323,11 +333,16 @@ func (s *Store) decorate(e Entry) Entry {
 		e.TargetHint = "先在游戏中选中要拆除的巨构。"
 	case "finish_rift_stage":
 		e.TargetHint = "先在游戏中选中星界裂隙。"
+	case "spawn_astral_rift":
+		e.TargetHint = "先在游戏中选中目标星系。裂隙会生成在该星系。"
 	case "effect enrage_behemoth":
 		e.TargetHint = "先选中玩家舰队、恒星基地或星球。"
 	}
 	if e.Lore == "" {
 		e.Lore = loreFor(e)
+	}
+	if len(e.PreCommands) == 0 {
+		e.PreCommands = PreCommandsFor(e.Command)
 	}
 	return e
 }
@@ -338,7 +353,15 @@ func fillTargets(e Entry) Entry {
 	}
 	player := TargetOpt{ID: "0", Label: "玩家"}
 	switch {
-	case e.Target:
+	case e.Scope == "pop":
+		e.DefaultTarget = "0"
+		e.Targets = []TargetOpt{{ID: "0", Label: "人口 0"}}
+		e.TargetHint = "参数是人口 ID。控制台输入 debugtooltip 后，把鼠标移到人口上可查看 ID。右上角可改。"
+	case e.Scope == "leader":
+		e.DefaultTarget = "0"
+		e.Targets = []TargetOpt{{ID: "0", Label: "领袖 0"}}
+		e.TargetHint = "先在游戏中选中玩家领袖。带数字的命令里，右上角 ID 会写入命令。"
+	case e.Target && (e.Scope == "ship" || strings.HasPrefix(e.Command, "event ")):
 		e.DefaultTarget = "0"
 		e.Targets = []TargetOpt{{ID: "0", Label: "玩家开局科研船"}}
 		e.TargetHint = "默认玩家开局科研船（ID 0）。控制台输入 debugtooltip 后，把鼠标移到舰船上可查看其它舰船 ID。"
@@ -354,10 +377,6 @@ func fillTargets(e Entry) Entry {
 		e.DefaultTarget = "0"
 		e.Targets = []TargetOpt{{ID: "0", Label: "玩家开局科研船"}}
 		e.TargetHint = "先在游戏中选中玩家舰船。需要目标 ID 的事件会默认使用开局科研船 0。"
-	case e.Scope == "leader":
-		e.DefaultTarget = "0"
-		e.Targets = []TargetOpt{player}
-		e.TargetHint = "先在游戏中选中玩家领袖。"
 	case e.Scope == "starbase":
 		e.DefaultTarget = "0"
 		e.Targets = []TargetOpt{player}
@@ -378,20 +397,49 @@ func fillTargets(e Entry) Entry {
 		e.DefaultTarget = "0"
 		e.Targets = []TargetOpt{player}
 		e.TargetHint = "先选中玩家舰队、星球或恒星，新对象会生成在该单位旁边。"
-	case needsCountryID(e.Command):
+	case e.Target || needsCountryID(e.Command):
 		e.DefaultTarget = "0"
 		e.Targets = []TargetOpt{
 			player,
 			{ID: "1", Label: "帝国 1"},
 			{ID: "2", Label: "帝国 2"},
 		}
-		e.TargetHint = "默认玩家帝国（ID 0）。右上角可改选其它帝国 ID。"
+		e.TargetHint = "默认玩家帝国（ID 0）。右上角可改选其它帝国 ID，数字会写入命令。"
 	default:
 		e.DefaultTarget = "0"
 		e.Targets = []TargetOpt{player}
 		e.TargetHint = "默认作用于玩家帝国（ID 0），无需额外目标 ID。"
 	}
 	return e
+}
+
+func PreCommandsFor(cmd string) []string {
+	cmd = strings.TrimSpace(cmd)
+	if v, ok := preByCommand[cmd]; ok {
+		out := make([]string, len(v))
+		copy(out, v)
+		return out
+	}
+	if strings.HasPrefix(cmd, "activate_relic ") {
+		id := strings.TrimSpace(strings.TrimPrefix(cmd, "activate_relic "))
+		if id != "" && id != "all" {
+			return []string{"add_relic " + id}
+		}
+	}
+	return nil
+}
+
+var preByCommand = map[string][]string{
+	"event crisis.1200":                 {"event crisis.1000"},
+	"event utopia.3320":                 {"event utopia.3308"},
+	"event graygoo.1":                   {"event distar.11000"},
+	"event graygoo.100":                 {"event distar.11000"},
+	"event distar.13000":                {"event distar.11000"},
+	"event fallen_empires_awakening.1":  {"play 1"},
+	"event fallen_machine_empire.1":     {"play 1"},
+	"event marauder.500":                {"play 1"},
+	"event fallen_empires_awakening.10": {"play 1"},
+	"event grand_archive.2300":          {"play 1"},
 }
 
 func inferScope(cmd string) string {
@@ -406,7 +454,12 @@ func inferScope(cmd string) string {
 		return "first_contact"
 	case strings.Contains(cmd, "add_situation_progress") || strings.Contains(cmd, "destroy_situation"):
 		return "situation"
-	case strings.HasPrefix(cmd, "skills "):
+	case cmd == "spawn_astral_rift":
+		return "system"
+	case strings.HasPrefix(cmd, "kill_pop "):
+		return "pop"
+	case cmd == "kill_ruler" || strings.HasPrefix(cmd, "kill_leader ") ||
+		strings.HasPrefix(cmd, "skills ") || strings.HasPrefix(cmd, "add_trait_leader "):
 		return "leader"
 	case cmd == "branchoffice" || cmd == "finish_arc_stage" || planetScoped(cmd):
 		return "planet"
@@ -438,14 +491,215 @@ func needsCountryID(cmd string) bool {
 	for _, p := range []string{
 		"play ", "annex", "force_integrate", "add_opinion ", "add_trust ",
 		"add_intel ", "add_loyalty ", "add_spynetwork_value ", "add_subject_xp ",
-		"war ", "casusbelli ", "surrender ", "kill_country", "kill_pop ",
-		"kill_leader ", "add_trait_leader ", "add_trait_species ",
+		"war ", "casusbelli ", "surrender ", "kill_country",
 	} {
 		if strings.HasPrefix(cmd, p) || cmd == strings.TrimSpace(p) {
 			return true
 		}
 	}
 	return false
+}
+
+func inferTargetMode(cmd, scope string, target bool) string {
+	switch {
+	case strings.HasPrefix(cmd, "kill_pop "):
+		return "last"
+	case strings.HasPrefix(cmd, "kill_leader "), strings.HasPrefix(cmd, "add_trait_leader "):
+		return "first"
+	case strings.HasPrefix(cmd, "play "):
+		return "last"
+	case strings.HasPrefix(cmd, "add_intel "), strings.HasPrefix(cmd, "add_loyalty "),
+		strings.HasPrefix(cmd, "add_spynetwork_value "), strings.HasPrefix(cmd, "add_subject_xp "),
+		strings.HasPrefix(cmd, "casusbelli "), strings.HasPrefix(cmd, "surrender "):
+		return "first"
+	case strings.HasPrefix(cmd, "add_opinion "), strings.HasPrefix(cmd, "add_trust "),
+		strings.HasPrefix(cmd, "war "):
+		return "second"
+	case target && strings.HasPrefix(cmd, "event "):
+		return "append"
+	case target && scope == "ship":
+		return "append"
+	}
+	return ""
+}
+
+func ApplyTarget(command, mode, id string) string {
+	command = strings.TrimSpace(command)
+	if command == "" || mode == "" || !isDigits(id) {
+		return command
+	}
+	f := strings.Fields(command)
+	if len(f) == 0 {
+		return command
+	}
+	switch mode {
+	case "append":
+		if len(f) >= 3 && isDigits(f[len(f)-1]) {
+			f[len(f)-1] = id
+			return strings.Join(f, " ")
+		}
+		return command + " " + id
+	case "first":
+		for i := 1; i < len(f); i++ {
+			if isDigits(f[i]) {
+				f[i] = id
+				return strings.Join(f, " ")
+			}
+		}
+	case "second":
+		n := 0
+		for i := 1; i < len(f); i++ {
+			if isDigits(f[i]) {
+				n++
+				if n == 2 {
+					f[i] = id
+					return strings.Join(f, " ")
+				}
+			}
+		}
+	case "last":
+		for i := len(f) - 1; i >= 1; i-- {
+			if isDigits(f[i]) {
+				f[i] = id
+				return strings.Join(f, " ")
+			}
+		}
+	}
+	return command
+}
+
+func isDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func applyDLC(e Entry) Entry {
+	if e.DLC != "" {
+		return e
+	}
+	if d, ok := dlcByCommand[e.Command]; ok {
+		e.DLC = d
+		return e
+	}
+	if id, ok := eventID(e.Command); ok {
+		if d, ok := dlcByEvent[id]; ok {
+			e.DLC = d
+		}
+	}
+	if name, ok := shipDesign(e.Command); ok {
+		if d, ok := dlcByShip[name]; ok {
+			e.DLC = d
+		}
+	}
+	if id, ok := megaType(e.Command); ok {
+		if d, ok := dlcByMega[id]; ok {
+			e.DLC = d
+		}
+	}
+	return e
+}
+
+var dlcByCommand = map[string]string{
+	"research_technology tech_titans":     "天启",
+	"research_technology tech_colossus":   "天启",
+	"research_technology tech_juggernaut": "联邦",
+	"activate_ascension_perk ap_become_the_crisis": "天灾",
+	"activate_ascension_perk ap_cosmogenesis":      "机械纪元",
+	"activate_ascension_perk ap_nanotech":          "机械纪元",
+	"activate_ascension_perk ap_modularity":        "机械纪元",
+	"activate_ascension_perk ap_behemoth_fury":     "万物竞发",
+	"activate_ascension_perk ap_galactic_hyperthermia": "炼狱",
+	"effect unlock_council_slots = 1": "星系典范",
+	"add_specimen random":             "寰宇博物",
+	"add_relic r_head_of_zarqlan":     "远古遗物",
+	"add_relic r_cetanas_heart":       "机械纪元",
+	"spawn_astral_rift":               "星界位面",
+	"finish_rift_stage":               "星界位面",
+	"set_completed_rifts 2":           "星界位面",
+	"branchoffice":                    "寰宇企业",
+}
+
+var dlcByEvent = map[string]string{
+	"crisis.8005":                    "机械纪元",
+	"crisis.7516":                    "机械纪元",
+	"graygoo.1":                      "遥远繁星",
+	"graygoo.100":                    "遥远繁星",
+	"graygoo.400":                    "遥远繁星",
+	"distar.11000":                   "遥远繁星",
+	"distar.13000":                   "遥远繁星",
+	"akx.8888":                       "地平线信号",
+	"ancrel.4000":                    "远古遗物",
+	"ancrel.4058":                    "远古遗物",
+	"ancrel.6130":                    "远古遗物",
+	"ancrel.10050":                   "远古遗物",
+	"cstorms.195":                    "星体风暴",
+	"grand_archive.1002":             "寰宇博物",
+	"grand_archive.2300":             "寰宇博物",
+	"shroud.4135":                    "暗影之幕",
+	"infernals.1055":                 "炼狱",
+	"nomads.610":                     "游牧",
+	"fallen_empires_awakening.10":    "暗影之幕",
+	"cyber.1505":                     "机械纪元",
+	"synth.1505":                     "机械纪元",
+	"bio.170":                        "生物创生",
+	"bio.175":                        "生物创生",
+	"bio.180":                        "生物创生",
+	"shroud.20":                      "暗影之幕",
+}
+
+var dlcByShip = map[string]string{
+	"NAME_Synth_Queen_Titan":       "机械纪元",
+	"NAME_Synth_Queen_Royal_Guard": "机械纪元",
+	"NAME_Synth_Queen_Harrier":     "机械纪元",
+	"NAME_Paradox_Titan":           "机械纪元",
+	"NAME_Behemoth_01":             "万物竞发",
+	"NAME_Behemoth_02":             "万物竞发",
+	"NAME_Behemoth_03":             "万物竞发",
+	"NAME_Behemoth_04":             "万物竞发",
+	"NAME_Venomous_Deity":          "骑士与领主",
+	"NAME_Crisis_Star_Eater":       "天灾",
+}
+
+var dlcByMega = map[string]string{
+	"lgate_base":                       "遥远繁星",
+	"strategic_coordination_center_3":  "寰宇企业",
+	"strategic_coordination_center_0":  "寰宇企业",
+	"mega_shipyard_3":                  "纵横捭阖",
+	"mega_shipyard_0":                  "纵横捭阖",
+	"hyper_relay":                      "纵横捭阖",
+	"hyper_relay_ruined":               "纵横捭阖",
+	"quantum_catapult_3":               "纵横捭阖",
+	"quantum_catapult_0":               "纵横捭阖",
+	"quantum_catapult_ruined":          "纵横捭阖",
+	"orbital_ring":                     "纵横捭阖",
+	"orbital_ring_ruined":              "纵横捭阖",
+	"dyson_swarm_3":                    "机械纪元",
+	"dyson_swarm_1":                    "机械纪元",
+	"orbital_arc_furnace_4":            "机械纪元",
+	"orbital_arc_furnace_1":            "机械纪元",
+	"cosmogenesis_world_0":             "机械纪元",
+	"cosmogenesis_needle":              "机械纪元",
+	"shroud_seal":                      "机械纪元",
+	"grand_archive_0":                  "寰宇博物",
+	"deep_space_citadel_0":             "寰宇博物",
+	"behemoth_egg":                     "万物竞发",
+	"behemoth_chrysalis":               "万物竞发",
+	"galactic_crucible_4":              "炼狱",
+	"galactic_crucible_0":              "炼狱",
+	"dyson_gun_0":                      "游牧",
+	"dyson_gun_3":                      "游牧",
+	"dyson_gun_0_restored":             "游牧",
+	"civilian_arkship_megastructure":   "游牧",
+	"military_arkship_megastructure":   "游牧",
+	"science_arkship_megastructure":    "游牧",
+	"waystation_megastructure":         "游牧",
 }
 
 func eventID(command string) (string, bool) {

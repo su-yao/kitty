@@ -59,6 +59,25 @@ func TestLocalGuard(t *testing.T) {
 	}
 }
 
+func TestCommandChain(t *testing.T) {
+	got, err := commandChain([]string{"event crisis.1000"}, "event crisis.1200")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(got, "|") != "event crisis.1000|event crisis.1200" {
+		t.Fatalf("got %v", got)
+	}
+	if _, err := commandChain([]string{"a\nb"}, "ok"); err == nil {
+		t.Fatal("newline pre should fail")
+	}
+	if _, err := commandChain(nil, ""); err == nil {
+		t.Fatal("empty command should fail")
+	}
+	if _, err := commandChain([]string{"a", "b", "c", "d", "e"}, "ok"); err == nil {
+		t.Fatal("too many pre commands should fail")
+	}
+}
+
 func TestValidateCommand(t *testing.T) {
 	ok := []string{"add_ship NAME_Battleship", " effect add_modifier = { multiplier = 999 } "}
 	for _, c := range ok {

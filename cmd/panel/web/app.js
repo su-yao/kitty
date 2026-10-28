@@ -140,6 +140,7 @@ async function loadList() {
     b.className = "cmd" + (item.missing ? " missing" : "");
     const tags = [];
     if (item.scope && item.scope !== "country") tags.push(`<i class="tag">${scopeLabel(item.scope)}</i>`);
+    if (item.pre_commands && item.pre_commands.length) tags.push(`<i class="tag">含前置</i>`);
     if (item.dlc) tags.push(`<i class="tag dlc">${escapeHtml(item.dlc)}</i>`);
     if (item.missing) tags.push(`<i class="tag miss">未找到</i>`);
     b.innerHTML = `<b>${escapeHtml(item.name_zh)}</b><code>${escapeHtml(previewCommand(item))}</code>` +
@@ -190,8 +191,44 @@ function previewCommand(item) {
 function withTarget(command, item) {
   const target = currentTargetId();
   if (!/^\d+$/.test(target)) return command;
-  if (item && item.target && command.startsWith("event ")) {
+  const mode = (item && item.target_mode) || (item && item.target && String(command).startsWith("event ") ? "append" : "");
+  if (!mode) return command;
+  const f = String(command).trim().split(/\s+/);
+  const isNum = (s) => /^\d+$/.test(s);
+  if (mode === "append") {
+    if (f.length >= 3 && isNum(f[f.length - 1])) {
+      f[f.length - 1] = target;
+      return f.join(" ");
+    }
     return `${command} ${target}`;
+  }
+  if (mode === "first") {
+    for (let i = 1; i < f.length; i++) {
+      if (isNum(f[i])) {
+        f[i] = target;
+        return f.join(" ");
+      }
+    }
+  }
+  if (mode === "second") {
+    let n = 0;
+    for (let i = 1; i < f.length; i++) {
+      if (isNum(f[i])) {
+        n += 1;
+        if (n === 2) {
+          f[i] = target;
+          return f.join(" ");
+        }
+      }
+    }
+  }
+  if (mode === "last") {
+    for (let i = f.length - 1; i >= 1; i--) {
+      if (isNum(f[i])) {
+        f[i] = target;
+        return f.join(" ");
+      }
+    }
   }
   return command;
 }
@@ -210,8 +247,11 @@ function showTip(ev, item) {
   const bits = [
     `<div class="tip-title">${escapeHtml(item.name_zh)}</div>`,
     `<div class="tip-row"><span>目标</span><div class="tip-body">${escapeHtml(targetSummary(item))}</div></div>`,
-    `<div class="tip-row"><span>命令</span><code>${escapeHtml(cmd)}</code></div>`,
   ];
+  if (item.pre_commands && item.pre_commands.length) {
+    bits.push(`<div class="tip-row"><span>前置</span><code>${escapeHtml(item.pre_commands.join(" ; "))}</code></div>`);
+  }
+  bits.push(`<div class="tip-row"><span>命令</span><code>${escapeHtml(cmd)}</code></div>`);
   if (item.lore) bits.push(`<div class="tip-lore">${escapeHtml(item.lore)}</div>`);
   if (item.note && item.note !== item.lore) bits.push(`<div class="tip-note">${escapeHtml(item.note)}</div>`);
   if (item.dlc) bits.push(`<div class="tip-note">需要 DLC：${escapeHtml(item.dlc)}</div>`);
@@ -268,20 +308,24 @@ async function sendCmd(item, name) {
     setStatus("上一条命令还在发送，请稍候…", true);
     return;
   }
-  if (item.target && !/^\d+$/.test(currentTargetId())) {
-    setStatus(`${name} 需要目标 ID：默认玩家开局科研船为 0。也可在右上角改选或自定义。`, true);
+  if ((item.target || item.target_mode) && !/^\d+$/.test(currentTargetId())) {
+    setStatus(`${name} 需要目标 ID：默认玩家为 0。也可在右上角改选或自定义。`, true);
     return;
   }
   const command = withTarget(item.command, item);
+  const pre = (Array.isArray(item.pre_commands) ? item.pre_commands : [])
+    .map((c) => String(c || "").trim())
+    .filter(Boolean);
   state.sending = true;
   document.body.classList.add("busy");
-  setStatus(`发送中：${name}`);
+  setStatus(pre.length ? `发送中：先 ${pre.join(" ; ")}，再 ${name}` : `发送中：${name}`);
   try {
     const data = await api("/api/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         command,
+        pre_commands: pre,
         console_key: $("consoleKey").value,
         skip_open: $("consoleReady").value === "ready",
       }),

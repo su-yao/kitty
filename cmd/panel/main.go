@@ -202,16 +202,18 @@ func (a *App) commands(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) sendCmd(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Command    string `json:"command"`
-		ConsoleKey string `json:"console_key"`
-		SkipOpen   bool   `json:"skip_open"`
+		Command     string   `json:"command"`
+		PreCommands []string `json:"pre_commands"`
+		ConsoleKey  string   `json:"console_key"`
+		SkipOpen    bool     `json:"skip_open"`
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 8<<10)
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		httpError(w, 400, err.Error())
 		return
 	}
-	if err := validateCommand(body.Command); err != nil {
+	chain, err := commandChain(body.PreCommands, body.Command)
+	if err != nil {
 		httpError(w, 400, err.Error())
 		return
 	}
@@ -223,13 +225,31 @@ func (a *App) sendCmd(w http.ResponseWriter, r *http.Request) {
 		key = "oem3"
 	}
 	a.sendMu.Lock()
-	err := send.Send(body.Command, send.Options{ConsoleKey: key, DelayMS: 180, SkipOpen: body.SkipOpen})
+	err = send.SendChain(chain, send.Options{ConsoleKey: key, DelayMS: 180, SkipOpen: body.SkipOpen})
 	a.sendMu.Unlock()
 	if err != nil {
 		httpError(w, 500, err.Error())
 		return
 	}
-	writeJSON(w, map[string]any{"ok": true, "message": "已发送: " + body.Command})
+	writeJSON(w, map[string]any{"ok": true, "message": "已发送: " + strings.Join(chain, " ; ")})
+}
+
+func commandChain(pre []string, cmd string) ([]string, error) {
+	if len(pre) > 4 {
+		return nil, errors.New("前置命令过多")
+	}
+	out := make([]string, 0, len(pre)+1)
+	for _, c := range pre {
+		if err := validateCommand(c); err != nil {
+			return nil, err
+		}
+		out = append(out, strings.TrimSpace(c))
+	}
+	if err := validateCommand(cmd); err != nil {
+		return nil, err
+	}
+	out = append(out, strings.TrimSpace(cmd))
+	return out, nil
 }
 
 func validateCommand(cmd string) error {

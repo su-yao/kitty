@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"stellaris-console-panel/internal/catalog"
 )
 
 func TestScanShipsAndMegas(t *testing.T) {
@@ -164,6 +166,27 @@ func TestKeepFilters(t *testing.T) {
 	if !keepMega("habitat_central_complex", "") {
 		t.Fatal("habitat")
 	}
+	if !keepMega("gateway_final", "") {
+		t.Fatal("gateway")
+	}
+	if !keepMega("behemoth_egg", "") {
+		t.Fatal("behemoth")
+	}
+	if !keepMega("galactic_crucible_4", "") {
+		t.Fatal("crucible")
+	}
+	if !keepMega("dyson_gun_3", "") {
+		t.Fatal("stellar cannon")
+	}
+	if !keepMega("shroud_seal", "") {
+		t.Fatal("shroud seal")
+	}
+	if !keepMega("deep_space_citadel_0", "") {
+		t.Fatal("citadel")
+	}
+	if !keepMega("waystation_megastructure", "") {
+		t.Fatal("waystation")
+	}
 	if keepEvent("test.1", "") {
 		t.Fatal("test event")
 	}
@@ -229,6 +252,42 @@ d1 = {
 	if !r.DesignNames["NAME_Titan"] {
 		t.Fatalf("missing design names: %+v", r.DesignNames)
 	}
+}
+
+func TestKeepMegaCoversBuiltinIDs(t *testing.T) {
+	s := catalog.New()
+	page := s.List(catalog.CatMega, "", "4.5.0", 1, 800)
+	n := 0
+	for _, e := range page.Items {
+		id := megaIDFromCommand(e.Command)
+		if id == "" {
+			continue
+		}
+		n++
+		if !keepMega(id, "") {
+			t.Fatalf("keepMega dropped builtin id %s (%s)", id, e.NameZH)
+		}
+	}
+	if n < 50 {
+		t.Fatalf("too few mega ids: %d", n)
+	}
+}
+
+func megaIDFromCommand(cmd string) string {
+	const key = "type = "
+	i := strings.Index(cmd, key)
+	if i < 0 {
+		return ""
+	}
+	rest := strings.TrimSpace(cmd[i+len(key):])
+	id := rest
+	for j, r := range rest {
+		if r == ' ' || r == '}' {
+			id = rest[:j]
+			break
+		}
+	}
+	return id
 }
 
 func TestScanReportWithoutGameRoot(t *testing.T) {

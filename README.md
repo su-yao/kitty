@@ -11,7 +11,8 @@ Windows 桌面工具：把《群星》原版与 MOD 的控制台命令做成分�
 - 扫描游戏根目录、创意工坊与额外 MOD 目录，只保留有中文名或可实际刷出的条目
 - 扫描结果自动与内置库去重；内置库跨分类也不重复同一条命令
 - 按游戏版本过滤命令（例如女王泰坦自 3.12 起，星际大炮自 4.4 起）
-- 按钮标注前置条件：`选舰队`、`选星球`、`先选目标`、`需 DLC`；扫描游戏目录后会自动校验事件 ID 与舰船设计是否存在，找不到的标为 `未找到`
+- 按钮标注前置条件：`选舰队`、`选星球`、`先选目标`、`含前置`，以及所需 DLC 名；扫描游戏目录后会自动校验事件 ID 与舰船设计是否存在，找不到的标为 `未找到`
+- 带前置的命令会先输入前置（例如狂暴者先发无形者、启动遗珍先 `add_relic`），再输入所选命令
 - 管理员权限下向群星窗口注入按键，并发点击会串行发送
 - 设置自动保存，界面底部显示当前程序版本
 
@@ -25,9 +26,9 @@ Windows 桌面工具：把《群星》原版与 MOD 的控制台命令做成分�
 
 ## 安装（Windows）
 
-只需要 `StellarisConsolePanel-Setup.exe`（自包含安装包，已嵌入主程序）。
+只需要 `StellarisConsolePanel-Setup-<版本>.exe`（自包含安装包，已嵌入主程序）。
 
-1. 双击 `StellarisConsolePanel-Setup.exe`，在 UAC 提示选择「是」
+1. 双击 `StellarisConsolePanel-Setup-1.3.7.exe`，在 UAC 提示选择「是」
 2. 确认安装目录（默认 `C:\Program Files\StellarisConsolePanel`）
 3. 选择是否创建开始菜单 / 桌面快捷方式
 4. 安装完成后从开始菜单打开 StellarisConsolePanel
@@ -36,8 +37,8 @@ Windows 桌面工具：把《群星》原版与 MOD 的控制台命令做成分�
 静默安装：
 
 ```
-StellarisConsolePanel-Setup.exe /S
-StellarisConsolePanel-Setup.exe /S /DIR="D:\Games\StellarisConsolePanel"
+StellarisConsolePanel-Setup-1.3.7.exe /S
+StellarisConsolePanel-Setup-1.3.7.exe /S /DIR="D:\Games\StellarisConsolePanel"
 ```
 
 卸载：
@@ -62,7 +63,7 @@ StellarisConsolePanel-Setup.exe /S /DIR="D:\Games\StellarisConsolePanel"
 go test ./internal/catalog ./internal/scan
 
 # 启动预览
-./dist/linux/StellarisConsolePanel
+./dist/linux/StellarisConsolePanel-1.3.7
 ```
 
 ## 从源码打包 Windows EXE
@@ -78,19 +79,21 @@ bash scripts/build.sh
 
 产物：
 
-- `dist/windows/StellarisConsolePanel-Setup.exe` 标准安装包（双击安装）
-- `dist/windows/StellarisConsolePanel.exe` 便携主程序
-- `dist/linux/StellarisConsolePanel` 预览
+- `dist/windows/StellarisConsolePanel-Setup-1.3.7.exe` 标准安装包（双击安装）
+- `dist/windows/StellarisConsolePanel-1.3.7.exe` 便携主程序
+- `dist/linux/StellarisConsolePanel-1.3.7` 预览
 
 ## 使用注意
 
 - 控制台在铁人模式和多人游戏中不可用
-- `event` 命令按事件作用域生效：国家事件可直接触发；星球事件要先选中星球；舰船事件必须填「目标 ID」（控制台输入 `debugtooltip`，悬停舰船查看 ID），例如 `event crisis.105 <舰船ID>`
+- `event` 命令按事件作用域生效：国家事件可直接触发；星球事件要先选中星球；舰船事件必须填「目标 ID」（控制台输入 `debugtooltip`，悬停舰船查看 ID），例如 `event akx.8888 0`
+- 右上角目标 ID 会写入需要数字的命令：`kill_pop`、`kill_leader`、`play`、领袖特质，以及 `add_intel` / `add_opinion` / `war` 一类帝国命令
 - `add_ship` 会在当前选中的舰队、星球或星系旁生成舰船，先选中一个目标再点按钮
-- 部分事件和舰船需要 DLC 或特定局势；按钮右上角会标出 `需 DLC` 与 `未找到`
+- 部分事件和舰船需要 DLC 或特定局势；按钮右上角会标出 DLC 名与 `未找到`
 - 首次使用先点「打开控制台」，确认控制台出现后再点命令；之后保持「已打开，只输入回车」
 - 若命令没进去：先点「检测窗口」确认找到 `stellaris.exe`，再点一下群星画面让窗口置于最前
 - 命令含特殊字符时自动改用剪贴板粘贴，会覆盖系统剪贴板
 - `instant_build` 对 AI 同样生效，用完再点一次关闭
+- 标了 `含前置` 的按钮会先输入前置命令并回车，再输入所选命令；控制台保持打开
 - 部分事件需要先选中星球、舰队或局势
 - MOD 扫描结果进入「MOD扫描」分类，重复命令会被自动跳过

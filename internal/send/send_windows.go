@@ -112,6 +112,31 @@ type kbdInput struct {
 	Tail  [8]byte
 }
 
+func SendChain(commands []string, opt Options) error {
+	first := true
+	n := 0
+	for _, c := range commands {
+		c = strings.TrimSpace(c)
+		if c == "" {
+			continue
+		}
+		o := opt
+		if !first {
+			o.SkipOpen = true
+		}
+		if err := Send(c, o); err != nil {
+			return err
+		}
+		first = false
+		n++
+		time.Sleep(120 * time.Millisecond)
+	}
+	if n == 0 {
+		return errors.New("空命令")
+	}
+	return nil
+}
+
 func Send(command string, opt Options) error {
 	command = strings.TrimSpace(command)
 	if command == "" {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -21,6 +22,23 @@ var (
 	mu      sync.Mutex
 	history []string
 )
+
+func SendChain(commands []string, opt Options) error {
+	n := 0
+	var last error
+	for _, c := range commands {
+		c = strings.TrimSpace(c)
+		if c == "" {
+			continue
+		}
+		last = Send(c, opt)
+		n++
+	}
+	if n == 0 {
+		return errors.New("空命令")
+	}
+	return last
+}
 
 func Send(command string, opt Options) error {
 	if command == "" {
