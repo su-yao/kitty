@@ -51,7 +51,7 @@ func leviathans() []Entry {
 		lev("光谱幽魂 蓝", "Wraith Blue", "NAME_Spectral_Wraith_650THz", "3.0.0", ""),
 		lev("光谱幽魂 红", "Wraith Red", "NAME_Spectral_Wraith_450THz", "3.0.0", ""),
 		lev("光谱幽魂 黄", "Wraith Yellow", "NAME_Spectral_Wraith_520THz", "3.0.0", ""),
-		lev("毒圣", "Venomous Deity", "NAME_Venomous_Deity", "3.7.0", "骑士与领主"),
+		lev("毒圣", "Venomous Deity", "NAME_Venomous_Deity", "3.7.0", "毒物物种包"),
 		lev("古代采矿无人机", "Ancient Mining Drone", "NAME_Ancient_Mining_Drone", "3.0.0", ""),
 		lev("古代战斗无人机", "Ancient Combat Drone", "NAME_Ancient_Combat_Drone", "3.0.0", ""),
 		lev("古代驱逐舰", "Ancient Destroyer", "NAME_Ancient_Destroyer", "3.0.0", ""),

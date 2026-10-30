@@ -22,9 +22,9 @@ type Entry struct {
 	Scope string `json:"scope,omitempty"`
 	// Target means a numeric id from the picker is written into the command.
 	Target bool `json:"target,omitempty"`
-	// TargetMode is append, first, second or last.
+	// TargetMode is append, first, second, last or optional.
 	TargetMode string `json:"target_mode,omitempty"`
-	// DLC names the required expansion, for example 天启 or 机械纪元.
+	// DLC names the required expansion, for example 启示录 or 机械纪元.
 	DLC string `json:"dlc,omitempty"`
 	// Missing is set after a scan when the event id or ship design used by a
 	// built-in entry does not exist in the current game files.
@@ -337,6 +337,12 @@ func (s *Store) decorate(e Entry) Entry {
 		e.TargetHint = "先在游戏中选中目标星系。裂隙会生成在该星系。"
 	case "effect enrage_behemoth":
 		e.TargetHint = "先选中玩家舰队、恒星基地或星球。"
+	case "annex":
+		e.TargetHint = "不填 ID 时吞并当前选中帝国。右上角选非 0 的帝国 ID 会写入命令，默认 0 不写入。"
+	case "force_integrate":
+		e.TargetHint = "不填 ID 时整合当前选中附属。右上角选非 0 的帝国 ID 会写入命令，默认 0 不写入。"
+	case "kill_country":
+		e.TargetHint = "不填 ID 时杀死当前选中国家。右上角选非 0 的帝国 ID 会写入命令，默认 0 不写入。"
 	}
 	if e.Lore == "" {
 		e.Lore = loreFor(e)
@@ -515,6 +521,10 @@ func inferTargetMode(cmd, scope string, target bool) string {
 	case strings.HasPrefix(cmd, "add_opinion "), strings.HasPrefix(cmd, "add_trust "),
 		strings.HasPrefix(cmd, "war "):
 		return "second"
+	case cmd == "annex" || strings.HasPrefix(cmd, "annex "),
+		cmd == "force_integrate" || strings.HasPrefix(cmd, "force_integrate "),
+		cmd == "kill_country" || strings.HasPrefix(cmd, "kill_country "):
+		return "optional"
 	case target && strings.HasPrefix(cmd, "event "):
 		return "append"
 	case target && scope == "ship":
@@ -539,6 +549,14 @@ func ApplyTarget(command, mode, id string) string {
 			return strings.Join(f, " ")
 		}
 		return command + " " + id
+	case "optional":
+		if isDigits(f[len(f)-1]) && len(f) >= 2 {
+			f = f[:len(f)-1]
+		}
+		if id == "0" {
+			return strings.Join(f, " ")
+		}
+		return strings.Join(f, " ") + " " + id
 	case "first":
 		for i := 1; i < len(f); i++ {
 			if isDigits(f[i]) {
@@ -607,23 +625,29 @@ func applyDLC(e Entry) Entry {
 }
 
 var dlcByCommand = map[string]string{
-	"research_technology tech_titans":     "天启",
-	"research_technology tech_colossus":   "天启",
-	"research_technology tech_juggernaut": "联邦",
-	"activate_ascension_perk ap_become_the_crisis": "天灾",
+	"research_technology tech_titans":     "启示录",
+	"research_technology tech_colossus":   "启示录",
+	"research_technology tech_juggernaut": "纵横捭阖",
+	"activate_ascension_perk ap_become_the_crisis": "灭世天罚",
 	"activate_ascension_perk ap_cosmogenesis":      "机械纪元",
 	"activate_ascension_perk ap_nanotech":          "机械纪元",
 	"activate_ascension_perk ap_modularity":        "机械纪元",
 	"activate_ascension_perk ap_behemoth_fury":     "万物竞发",
-	"activate_ascension_perk ap_galactic_hyperthermia": "炼狱",
-	"effect unlock_council_slots = 1": "星系典范",
-	"add_specimen random":             "寰宇博物",
-	"add_relic r_head_of_zarqlan":     "远古遗物",
+	"activate_ascension_perk ap_galactic_hyperthermia": "炼狱物种包",
+	"effect unlock_council_slots = 1": "至臻完人",
+	"add_specimen random":             "博物天枢",
+	"add_relic r_head_of_zarqlan":     "上古之遗",
 	"add_relic r_cetanas_heart":       "机械纪元",
 	"spawn_astral_rift":               "星界位面",
 	"finish_rift_stage":               "星界位面",
 	"set_completed_rifts 2":           "星界位面",
 	"branchoffice":                    "寰宇企业",
+	"add_subject_xp 1 1000":           "四海皆臣",
+	"activate_ascension_perk ap_hydrocentric": "水生物种包",
+	"minor_artifacts 500":             "上古之遗",
+	"astral_threads 5000":             "星界位面",
+	"menace 5000":                     "灭世天罚",
+	"advanced_logic 5000":             "机械纪元",
 }
 
 var dlcByEvent = map[string]string{
@@ -635,23 +659,23 @@ var dlcByEvent = map[string]string{
 	"distar.11000":                   "遥远繁星",
 	"distar.13000":                   "遥远繁星",
 	"akx.8888":                       "地平线信号",
-	"ancrel.4000":                    "远古遗物",
-	"ancrel.4058":                    "远古遗物",
-	"ancrel.6130":                    "远古遗物",
-	"ancrel.10050":                   "远古遗物",
-	"cstorms.195":                    "星体风暴",
-	"grand_archive.1002":             "寰宇博物",
-	"grand_archive.2300":             "寰宇博物",
-	"shroud.4135":                    "暗影之幕",
-	"infernals.1055":                 "炼狱",
+	"ancrel.4000":                    "上古之遗",
+	"ancrel.4058":                    "上古之遗",
+	"ancrel.6130":                    "上古之遗",
+	"ancrel.10050":                   "上古之遗",
+	"cstorms.195":                    "风起云涌",
+	"grand_archive.1002":             "博物天枢",
+	"grand_archive.2300":             "博物天枢",
+	"shroud.4135":                    "虚境幽影",
+	"infernals.1055":                 "炼狱物种包",
 	"nomads.610":                     "游牧",
-	"fallen_empires_awakening.10":    "暗影之幕",
+	"fallen_empires_awakening.10":    "虚境幽影",
 	"cyber.1505":                     "机械纪元",
 	"synth.1505":                     "机械纪元",
-	"bio.170":                        "生物创生",
-	"bio.175":                        "生物创生",
-	"bio.180":                        "生物创生",
-	"shroud.20":                      "暗影之幕",
+	"bio.170":                        "万物竞发",
+	"bio.175":                        "万物竞发",
+	"bio.180":                        "万物竞发",
+	"shroud.20":                      "虚境幽影",
 }
 
 var dlcByShip = map[string]string{
@@ -663,8 +687,8 @@ var dlcByShip = map[string]string{
 	"NAME_Behemoth_02":             "万物竞发",
 	"NAME_Behemoth_03":             "万物竞发",
 	"NAME_Behemoth_04":             "万物竞发",
-	"NAME_Venomous_Deity":          "骑士与领主",
-	"NAME_Crisis_Star_Eater":       "天灾",
+	"NAME_Venomous_Deity":          "毒物物种包",
+	"NAME_Crisis_Star_Eater":       "灭世天罚",
 }
 
 var dlcByMega = map[string]string{
@@ -687,12 +711,12 @@ var dlcByMega = map[string]string{
 	"cosmogenesis_world_0":             "机械纪元",
 	"cosmogenesis_needle":              "机械纪元",
 	"shroud_seal":                      "机械纪元",
-	"grand_archive_0":                  "寰宇博物",
-	"deep_space_citadel_0":             "寰宇博物",
+	"grand_archive_0":                  "博物天枢",
+	"deep_space_citadel_0":             "博物天枢",
 	"behemoth_egg":                     "万物竞发",
 	"behemoth_chrysalis":               "万物竞发",
-	"galactic_crucible_4":              "炼狱",
-	"galactic_crucible_0":              "炼狱",
+	"galactic_crucible_4":              "炼狱物种包",
+	"galactic_crucible_0":              "炼狱物种包",
 	"dyson_gun_0":                      "游牧",
 	"dyson_gun_3":                      "游牧",
 	"dyson_gun_0_restored":             "游牧",

@@ -29,12 +29,12 @@ func resources() []Entry {
 		add("异星天然气 +5000", "Exotic Gases", "resource sr_exotic_gases 5000", ""),
 		add("稀有水晶 +5000", "Rare Crystals", "resource sr_rare_crystals 5000", ""),
 		add("纳米机器人 +5000", "Nanites", "resource nanites 5000", "L星团/灰蛊"),
-		add("次要文物 +500", "Minor Artifacts", "minor_artifacts 500", "远古遗物 DLC"),
-		add("威慑度 +5000", "Menace", "menace 5000", "化身天灾 3.0+"),
+		add("次要文物 +500", "Minor Artifacts", "minor_artifacts 500", "上古之遗 DLC"),
+		add("威慑度 +5000", "Menace", "menace 5000", "星海天罚 3.0+"),
 		add("帝国权威 +50", "Imperial Authority", "imperial_authority 50", "星海帝国"),
 	}
 	items = append(items,
-		e("星界丝线 +5000", "Astral Threads", "astral_threads 5000", CatResource, "3.10.0", "星界裂隙"),
+		e("星界丝缕 +5000", "Astral Threads", "astral_threads 5000", CatResource, "3.10.0", "星界位面"),
 		e("高级逻辑 +5000", "Advanced Logic", "advanced_logic 5000", CatResource, "3.12.0", "宇宙创生"),
 	)
 	return items

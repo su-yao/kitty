@@ -66,7 +66,7 @@ func empires() []Entry {
 		e("情报 +100 对 1", "Intel +100", "add_intel 1 100", CatEmpire, "3.0.0", "目标 数值"),
 		e("忠诚 +100", "Loyalty +100", "add_loyalty 1 100", CatEmpire, "3.0.0", ""),
 		e("间谍渗透 +1000", "Spy +1000", "add_spynetwork_value 1 1000", CatEmpire, "3.0.0", ""),
-		e("附属专精经验 +1000", "Subject XP", "add_subject_xp 1 1000", CatEmpire, "3.4.0", "霸主 DLC"),
+		e("附属专精经验 +1000", "Subject XP", "add_subject_xp 1 1000", CatEmpire, "3.4.0", "四海皆臣 DLC"),
 		e("联邦经验 +1200", "Fed experience", "federation_add_experience 1200", CatEmpire, "3.0.0", ""),
 		e("联邦凝聚力 +200", "Fed cohesion", "federation_add_cohesion 200", CatEmpire, "3.0.0", ""),
 		e("归还租借舰队", "Break fleet contract", "break_fleet_contract", CatEmpire, "3.0.0", "选中租借舰队"),

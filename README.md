@@ -28,7 +28,7 @@ Windows 桌面工具：把《群星》原版与 MOD 的控制台命令做成分�
 
 只需要 `StellarisConsolePanel-Setup-<版本>.exe`（自包含安装包，已嵌入主程序）。
 
-1. 双击 `StellarisConsolePanel-Setup-1.3.7.exe`，在 UAC 提示选择「是」
+1. 双击 `StellarisConsolePanel-Setup-1.3.8.exe`，在 UAC 提示选择「是」
 2. 确认安装目录（默认 `C:\Program Files\StellarisConsolePanel`）
 3. 选择是否创建开始菜单 / 桌面快捷方式
 4. 安装完成后从开始菜单打开 StellarisConsolePanel
@@ -37,8 +37,8 @@ Windows 桌面工具：把《群星》原版与 MOD 的控制台命令做成分�
 静默安装：
 
 ```
-StellarisConsolePanel-Setup-1.3.7.exe /S
-StellarisConsolePanel-Setup-1.3.7.exe /S /DIR="D:\Games\StellarisConsolePanel"
+StellarisConsolePanel-Setup-1.3.8.exe /S
+StellarisConsolePanel-Setup-1.3.8.exe /S /DIR="D:\Games\StellarisConsolePanel"
 ```
 
 卸载：
@@ -63,7 +63,7 @@ StellarisConsolePanel-Setup-1.3.7.exe /S /DIR="D:\Games\StellarisConsolePanel"
 go test ./internal/catalog ./internal/scan
 
 # 启动预览
-./dist/linux/StellarisConsolePanel-1.3.7
+./dist/linux/StellarisConsolePanel-1.3.8
 ```
 
 ## 从源码打包 Windows EXE
@@ -79,15 +79,15 @@ bash scripts/build.sh
 
 产物：
 
-- `dist/windows/StellarisConsolePanel-Setup-1.3.7.exe` 标准安装包（双击安装）
-- `dist/windows/StellarisConsolePanel-1.3.7.exe` 便携主程序
-- `dist/linux/StellarisConsolePanel-1.3.7` 预览
+- `dist/windows/StellarisConsolePanel-Setup-1.3.8.exe` 标准安装包（双击安装）
+- `dist/windows/StellarisConsolePanel-1.3.8.exe` 便携主程序
+- `dist/linux/StellarisConsolePanel-1.3.8` 预览
 
 ## 使用注意
 
 - 控制台在铁人模式和多人游戏中不可用
 - `event` 命令按事件作用域生效：国家事件可直接触发；星球事件要先选中星球；舰船事件必须填「目标 ID」（控制台输入 `debugtooltip`，悬停舰船查看 ID），例如 `event akx.8888 0`
-- 右上角目标 ID 会写入需要数字的命令：`kill_pop`、`kill_leader`、`play`、领袖特质，以及 `add_intel` / `add_opinion` / `war` 一类帝国命令
+- 右上角目标 ID 会写入需要数字的命令：`kill_pop`、`kill_leader`、`play`、领袖特质，以及 `add_intel` / `add_opinion` / `war` 一类帝国命令；`annex` / `kill_country` / `force_integrate` 仅在非 0 时写入
 - `add_ship` 会在当前选中的舰队、星球或星系旁生成舰船，先选中一个目标再点按钮
 - 部分事件和舰船需要 DLC 或特定局势；按钮右上角会标出 DLC 名与 `未找到`
 - 首次使用先点「打开控制台」，确认控制台出现后再点命令；之后保持「已打开，只输入回车」

@@ -149,6 +149,7 @@ async function loadList() {
     b.addEventListener("pointerenter", (ev) => showTip(ev, item));
     b.addEventListener("pointermove", (ev) => moveTip(ev));
     b.addEventListener("pointerleave", hideTip);
+    b._item = item;
     grid.appendChild(b);
   });
   refreshTargetOptions(data.items || []);
@@ -201,6 +202,11 @@ function withTarget(command, item) {
       return f.join(" ");
     }
     return `${command} ${target}`;
+  }
+  if (mode === "optional") {
+    if (isNum(f[f.length - 1]) && f.length >= 2) f = f.slice(0, -1);
+    if (target === "0") return f.join(" ");
+    return `${f.join(" ")} ${target}`;
   }
   if (mode === "first") {
     for (let i = 1; i < f.length; i++) {
@@ -258,6 +264,7 @@ function showTip(ev, item) {
   if (item.missing) bits.push(`<div class="tip-note">当前游戏文件中未找到该事件或设计。</div>`);
   if (item.name_en) bits.push(`<div class="tip-en">${escapeHtml(item.name_en)}</div>`);
   tip.innerHTML = bits.join("");
+  tip._item = item;
   tip.hidden = false;
   moveTip(ev);
 }
@@ -386,12 +393,28 @@ function scheduleSave() {
   $(id).addEventListener("input", scheduleSave);
 });
 $("consoleKey").addEventListener("change", scheduleSave);
+function refreshCommandPreviews() {
+  document.querySelectorAll(".cmd").forEach((b) => {
+    const item = b._item;
+    if (!item) return;
+    const code = b.querySelector("code");
+    if (code) code.textContent = previewCommand(item);
+  });
+  const tip = $("tip");
+  if (tip && !tip.hidden && tip._item) {
+    const fake = { clientX: parseFloat(tip.style.left) || 0, clientY: parseFloat(tip.style.top) || 0 };
+    showTip(fake, tip._item);
+  }
+}
+
 $("targetPick").addEventListener("change", () => {
   $("targetCustomWrap").hidden = $("targetPick").value !== "custom";
   if ($("targetPick").value !== "custom") state.targetId = $("targetPick").value;
+  refreshCommandPreviews();
 });
 $("targetId").addEventListener("input", () => {
   state.targetId = $("targetId").value.trim();
+  refreshCommandPreviews();
 });
 $("hideMissing").addEventListener("change", () => {
   state.hideMissing = $("hideMissing").checked;

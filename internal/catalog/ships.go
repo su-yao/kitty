@@ -15,7 +15,7 @@ func ships() []Entry {
 		ship("巡洋舰", "Cruiser", "NAME_Cruiser", "3.0.0", ""),
 		ship("战列舰", "Battleship", "NAME_Battleship", "3.0.0", ""),
 		ship("泰坦", "Titan", "NAME_Titan", "3.0.0", ""),
-		ship("巨像", "Colossus", "NAME_Colossus", "3.0.0", "天启 DLC"),
+		ship("巨像", "Colossus", "NAME_Colossus", "3.0.0", "启示录 DLC"),
 		ship("主宰", "Juggernaut", "NAME_Juggernaut", "3.0.0", "刷出会无法造船坞功能"),
 		ship("护卫舰(玩家设计)", "Player Corvette", "Corvette", "3.0.0", "使用当前帝国设计名，失败则改用 NAME_ 前缀"),
 		ship("驱逐舰(玩家设计)", "Player Destroyer", "Destroyer", "3.0.0", ""),
@@ -53,9 +53,9 @@ func ships() []Entry {
 	// DLC-locked designs still exist in the files but cannot be built or
 	// spawned without the matching expansion.
 	dlc := map[string]string{
-		"add_ship NAME_Colossus":                "天启",
-		"add_ship NAME_Titan":                   "天启",
-		"add_ship NAME_Juggernaut":              "联邦",
+		"add_ship NAME_Colossus":                "启示录",
+		"add_ship NAME_Titan":                   "启示录",
+		"add_ship NAME_Juggernaut":              "纵横捭阖",
 		"add_ship NAME_Horizon_Needle":          "机械纪元",
 		"add_ship NAME_Paladin":                 "游牧",
 	}

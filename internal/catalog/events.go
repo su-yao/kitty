@@ -69,7 +69,7 @@ func events() []Entry {
 		ev("虚境契约 欲望", "Instrument of Desire", "utopia.3307", "3.0.0", ""),
 		ev("轮回终末", "End of the Cycle", "utopia.3308", "3.0.0", "可选签订轮回终末契约"),
 		ev("清算之日", "The Reckoning", "utopia.3320", "3.0.0", "需先接受上一条契约"),
-		ev("轮回终末(暗影)", "End of the Cycle (Shroud)", "shroud.4135", "4.3.0", "暗影之幕版本契约"),
+		ev("轮回终末(暗影)", "End of the Cycle (Shroud)", "shroud.4135", "4.3.0", "虚境幽影版本契约"),
 		ev("神经共生", "Neural Symbiosis", "distar.172", "3.0.0", "选中舰船，可获得脑蛞蝓特质"),
 		ev("虚空之虫瘟疫", "Voidworm Plague", "grand_archive.2300", "3.14.0", "先用 play 选中虚空之虫，否则帝国可能崩溃"),
 		ev("破碎片段苏醒", "Shattered Fragments Awaken", "fallen_empires_awakening.10", "4.3.0", "需先用 play 选中破碎片段"),
