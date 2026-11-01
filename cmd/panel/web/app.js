@@ -194,7 +194,7 @@ function withTarget(command, item) {
   if (!/^\d+$/.test(target)) return command;
   const mode = (item && item.target_mode) || (item && item.target && String(command).startsWith("event ") ? "append" : "");
   if (!mode) return command;
-  const f = String(command).trim().split(/\s+/);
+  let f = String(command).trim().split(/\s+/).filter(Boolean);
   const isNum = (s) => /^\d+$/.test(s);
   if (mode === "append") {
     if (f.length >= 3 && isNum(f[f.length - 1])) {
@@ -204,7 +204,7 @@ function withTarget(command, item) {
     return `${command} ${target}`;
   }
   if (mode === "optional") {
-    if (isNum(f[f.length - 1]) && f.length >= 2) f = f.slice(0, -1);
+    if (f.length >= 2 && isNum(f[f.length - 1])) f = f.slice(0, -1);
     if (target === "0") return f.join(" ");
     return `${f.join(" ")} ${target}`;
   }
@@ -286,13 +286,20 @@ function hideTip() {
 function refreshTargetOptions(items) {
   const sel = $("targetPick");
   const prev = sel.value;
-  const seen = { "0": "玩家 (0)" };
+  const seen = {
+    "0": "玩家 (0)",
+    "1": "帝国 1",
+    "2": "帝国 2",
+  };
   items.forEach((item) => {
     (item.targets || []).forEach((t) => {
       if (!t || t.id == null) return;
-      if (!seen[t.id]) seen[t.id] = `${t.label || "目标"} (${t.id})`;
+      const id = String(t.id);
+      if (!seen[id]) seen[id] = `${t.label || "目标"} (${id})`;
     });
   });
+  const keep = prev === "custom" ? $("targetId").value.trim() : (prev || state.targetId);
+  if (/^\d+$/.test(keep) && !seen[keep]) seen[keep] = `ID ${keep}`;
   const ids = Object.keys(seen).sort((a, b) => Number(a) - Number(b));
   sel.innerHTML = "";
   ids.forEach((id) => {
@@ -305,7 +312,9 @@ function refreshTargetOptions(items) {
   custom.value = "custom";
   custom.textContent = "自定义 ID";
   sel.appendChild(custom);
-  if (prev === "custom" || seen[prev]) sel.value = prev;
+  if (prev === "custom") sel.value = "custom";
+  else if (seen[prev]) sel.value = prev;
+  else if (seen[state.targetId]) sel.value = state.targetId;
   else sel.value = "0";
   $("targetCustomWrap").hidden = sel.value !== "custom";
 }

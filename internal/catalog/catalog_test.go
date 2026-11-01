@@ -5,6 +5,16 @@ import (
 	"testing"
 )
 
+func listAll(s *Store, version string) []Entry {
+	first := s.List("", "", version, 1, 800)
+	out := make([]Entry, 0, first.Total)
+	out = append(out, first.Items...)
+	for p := 2; p <= first.TotalPages; p++ {
+		out = append(out, s.List("", "", version, p, 800).Items...)
+	}
+	return out
+}
+
 func TestCompareVer(t *testing.T) {
 	if compareVer("3.0.0", "3.0.0") != 0 {
 		t.Fatal("eq")
@@ -228,14 +238,14 @@ func TestDefaultPlayerTargetAndLore(t *testing.T) {
 
 func TestAllListedEntriesHavePlayerDefault(t *testing.T) {
 	s := New()
-	page := s.List("", "", "4.4.6", 1, 800)
-	if page.Total == 0 {
+	items := listAll(s, "4.4.6")
+	if len(items) == 0 {
 		t.Fatal("empty catalog")
 	}
-	if page.Total > len(page.Items) {
-		t.Fatalf("need all items, total=%d got=%d", page.Total, len(page.Items))
+	if n := s.List("", "", "4.4.6", 1, 1).Total; n != len(items) {
+		t.Fatalf("listAll incomplete: total=%d got=%d", n, len(items))
 	}
-	for _, e := range page.Items {
+	for _, e := range items {
 		if e.DefaultTarget != "0" {
 			t.Fatalf("%s default target %q", e.Command, e.DefaultTarget)
 		}
@@ -489,11 +499,11 @@ func TestCreateNavyIsNotAddShip(t *testing.T) {
 
 func TestRemainingCategoriesHaveSpecificLore(t *testing.T) {
 	s := New()
-	page := s.List("", "", "4.5.0", 1, 800)
-	if page.Total == 0 {
+	items := listAll(s, "4.5.0")
+	if len(items) == 0 {
 		t.Fatal("empty catalog")
 	}
-	for _, e := range page.Items {
+	for _, e := range items {
 		if e.Lore == "" {
 			t.Fatalf("%s %s missing lore", e.Category, e.Command)
 		}
@@ -542,7 +552,7 @@ func TestBuiltinCommandsAreUnique(t *testing.T) {
 
 func TestPreCommands(t *testing.T) {
 	s := New()
-	page := s.List("", "", "4.5.0", 1, 800)
+	page := Page{Items: listAll(s, "4.5.0")}
 	want := map[string][]string{
 		"event crisis.1200":             {"event crisis.1000"},
 		"event utopia.3320":             {"event utopia.3308"},
@@ -569,7 +579,7 @@ func TestPreCommands(t *testing.T) {
 
 func TestInferredScopes(t *testing.T) {
 	s := New()
-	page := s.List("", "", "4.5.0", 1, 800)
+	page := Page{Items: listAll(s, "4.5.0")}
 	want := map[string]string{
 		"planet_class pc_gaia":                   "planet",
 		"colonize 1":                             "planet",
@@ -685,7 +695,7 @@ func TestApplyTarget(t *testing.T) {
 
 func TestTargetModeAndDLC(t *testing.T) {
 	s := New()
-	page := s.List("", "", "4.5.0", 1, 800)
+	page := Page{Items: listAll(s, "4.5.0")}
 	wantMode := map[string]string{
 		"kill_pop 0":          "last",
 		"kill_leader 0":       "first",

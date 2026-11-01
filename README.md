@@ -2,16 +2,16 @@
 
 Windows 桌面工具：把《群星》原版与 MOD 的控制台命令做成分类按钮，按下后发送到正在运行的游戏控制台。
 
-适配版本：3.0.0 至 4.4.6（含 4.5.0 条目）。
+适配版本：3.0.0 至 4.5.0。
 
 ## 功能
 
 - 每条命令一个独立按钮，点击即发送
-- 分类分页：资源、舰船、天灾舰、利维坦、巨构、事件、科技、遗珍、行星、帝国、调试、MOD
+- 分类分页：资源经济、建造舰船、天灾舰船、利维坦、巨构、事件危机、科技飞升、遗珍标本、行星人口、帝国外交、调试开关、MOD扫描
 - 扫描游戏根目录、创意工坊与额外 MOD 目录，只保留有中文名或可实际刷出的条目
 - 扫描结果自动与内置库去重；内置库跨分类也不重复同一条命令
 - 按游戏版本过滤命令（例如女王泰坦自 3.12 起，星际大炮自 4.4 起）
-- 按钮标注前置条件：`选舰队`、`选星球`、`先选目标`、`含前置`，以及所需 DLC 名；扫描游戏目录后会自动校验事件 ID 与舰船设计是否存在，找不到的标为 `未找到`
+- 按钮标注前置条件：`选星球`、`选舰队`、`选舰船`、`选领袖`、`选恒星基地`、`选人口`、`选首次接触`、`选星系`、`选局势`、`先选目标`、`含前置`，以及所需 DLC 名；扫描游戏目录后会自动校验事件 ID 与舰船设计是否存在，找不到的标为 `未找到`
 - 带前置的命令会先输入前置（例如狂暴者先发无形者、启动遗珍先 `add_relic`），再输入所选命令
 - 管理员权限下向群星窗口注入按键，并发点击会串行发送
 - 设置自动保存，界面底部显示当前程序版本
@@ -28,7 +28,7 @@ Windows 桌面工具：把《群星》原版与 MOD 的控制台命令做成分�
 
 只需要 `StellarisConsolePanel-Setup-<版本>.exe`（自包含安装包，已嵌入主程序）。
 
-1. 双击 `StellarisConsolePanel-Setup-1.3.8.exe`，在 UAC 提示选择「是」
+1. 双击 `StellarisConsolePanel-Setup-1.3.9.exe`，在 UAC 提示选择「是」
 2. 确认安装目录（默认 `C:\Program Files\StellarisConsolePanel`）
 3. 选择是否创建开始菜单 / 桌面快捷方式
 4. 安装完成后从开始菜单打开 StellarisConsolePanel
@@ -37,8 +37,8 @@ Windows 桌面工具：把《群星》原版与 MOD 的控制台命令做成分�
 静默安装：
 
 ```
-StellarisConsolePanel-Setup-1.3.8.exe /S
-StellarisConsolePanel-Setup-1.3.8.exe /S /DIR="D:\Games\StellarisConsolePanel"
+StellarisConsolePanel-Setup-1.3.9.exe /S
+StellarisConsolePanel-Setup-1.3.9.exe /S /DIR="D:\Games\StellarisConsolePanel"
 ```
 
 卸载：
@@ -49,8 +49,8 @@ StellarisConsolePanel-Setup-1.3.8.exe /S /DIR="D:\Games\StellarisConsolePanel"
 
 ### 可选：校验命令是否适用于当前游戏
 
-首次扫描游戏根目录后，面板会读取 `events/`、`common/global_ship_designs`、`common/ship_designs`：
-- 事件会按文件中的 `country_event` / `planet_event` / `ship_event` 自动标注作用域
+首次扫描游戏根目录后，面板会读取 `events/`、`common/global_ship_designs`、`common/ship_designs`、`common/megastructures`：
+- 事件会按文件中的 `country_event` / `planet_event` / `ship_event` / `fleet_event` / `situation_event` 等自动标注作用域
 - 内置事件 ID 或 `NAME_` 舰船设计在当前版本不存在时标为 `未找到`
 - 勾选「隐藏不可用」可只显示校验通过的按钮
 
@@ -63,7 +63,7 @@ StellarisConsolePanel-Setup-1.3.8.exe /S /DIR="D:\Games\StellarisConsolePanel"
 go test ./internal/catalog ./internal/scan
 
 # 启动预览
-./dist/linux/StellarisConsolePanel-1.3.8
+./dist/linux/StellarisConsolePanel-1.3.9
 ```
 
 ## 从源码打包 Windows EXE
@@ -79,9 +79,9 @@ bash scripts/build.sh
 
 产物：
 
-- `dist/windows/StellarisConsolePanel-Setup-1.3.8.exe` 标准安装包（双击安装）
-- `dist/windows/StellarisConsolePanel-1.3.8.exe` 便携主程序
-- `dist/linux/StellarisConsolePanel-1.3.8` 预览
+- `dist/windows/StellarisConsolePanel-Setup-1.3.9.exe` 标准安装包（双击安装）
+- `dist/windows/StellarisConsolePanel-1.3.9.exe` 便携主程序
+- `dist/linux/StellarisConsolePanel-1.3.9` 预览
 
 ## 使用注意
 
@@ -95,5 +95,5 @@ bash scripts/build.sh
 - 命令含特殊字符时自动改用剪贴板粘贴，会覆盖系统剪贴板
 - `instant_build` 对 AI 同样生效，用完再点一次关闭
 - 标了 `含前置` 的按钮会先输入前置命令并回车，再输入所选命令；控制台保持打开
-- 部分事件需要先选中星球、舰队或局势
+- 部分命令需要先选中星球、舰队、星系或局势
 - MOD 扫描结果进入「MOD扫描」分类，重复命令会被自动跳过

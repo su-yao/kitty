@@ -28,7 +28,7 @@ const (
 )
 
 // appVersion can be overridden at build time with -X main.appVersion=...
-var appVersion = "1.3.8"
+var appVersion = "1.3.9"
 
 // silentMode suppresses interactive "press enter" prompts, which would hang
 // unattended installs launched with /S.
@@ -111,7 +111,7 @@ func runWizard(opts installOpts) error {
 	fmt.Println("================================================")
 	fmt.Println("  " + appNameZH + "  安装向导")
 	fmt.Println("  " + appName + "  v" + appVersion)
-	fmt.Println("  适配群星 3.0.0 - 4.4.6+")
+	fmt.Println("  适配群星 3.0.0 - 4.5.0")
 	fmt.Println("================================================")
 	fmt.Println()
 	fmt.Println("  本程序将安装到本地，并创建开始菜单与卸载项。")

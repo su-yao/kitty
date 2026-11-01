@@ -171,7 +171,11 @@ func (a *App) snapSettings() Settings {
 	return a.set
 }
 
-func (a *App) meta(w http.ResponseWriter, _ *http.Request) {
+func (a *App) meta(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		httpError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
 	s := a.snapSettings()
 	writeJSON(w, map[string]any{
 		"version":         appVersion,
@@ -184,6 +188,10 @@ func (a *App) meta(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (a *App) commands(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		httpError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
 	q := r.URL.Query()
 	page, _ := strconv.Atoi(q.Get("page"))
 	size, _ := strconv.Atoi(q.Get("page_size"))
@@ -201,6 +209,10 @@ func (a *App) commands(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) sendCmd(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		httpError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
 	var body struct {
 		Command     string   `json:"command"`
 		PreCommands []string `json:"pre_commands"`
@@ -267,6 +279,10 @@ func validateCommand(cmd string) error {
 }
 
 func (a *App) openConsole(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		httpError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
 	var body struct {
 		ConsoleKey string `json:"console_key"`
 	}
@@ -290,7 +306,11 @@ func (a *App) openConsole(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"ok": true, "message": "已尝试打开群星控制台"})
 }
 
-func (a *App) scanNow(w http.ResponseWriter, _ *http.Request) {
+func (a *App) scanNow(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		httpError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
 	s := a.snapSettings()
 	if s.GameRoot == "" && s.Workshop == "" && s.ExtraMods == "" {
 		httpError(w, 400, "请至少填写游戏根目录或 MOD 目录")
@@ -325,7 +345,11 @@ func (a *App) scanNow(w http.ResponseWriter, _ *http.Request) {
 	})
 }
 
-func (a *App) detect(w http.ResponseWriter, _ *http.Request) {
+func (a *App) detect(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		httpError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
 	title, err := send.FindStellaris()
 	if err != nil {
 		httpError(w, 404, err.Error())
@@ -337,6 +361,10 @@ func (a *App) detect(w http.ResponseWriter, _ *http.Request) {
 func (a *App) settings(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		writeJSON(w, a.snapSettings())
+		return
+	}
+	if r.Method != http.MethodPost {
+		httpError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 	// Decode on top of the current values so omitted fields (for example

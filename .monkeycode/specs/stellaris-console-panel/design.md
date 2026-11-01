@@ -1,11 +1,11 @@
 # Stellaris Console Panel
 
 Feature Name: stellaris-console-panel
-Updated: 2026-10-19
+Updated: 2026-10-31
 
 ## Description
 
-Windows 桌面工具：内置 3.0.0–4.4.6+ 原版命令库，可扫描游戏根目录与 MOD，分类分页按钮一键把控制台命令发送到正在运行的群星窗口。
+Windows 桌面工具：内置 3.0.0–4.5.0 原版命令库，可扫描游戏根目录与 MOD，分类分页按钮一键把控制台命令发送到正在运行的群星窗口。
 
 ## Architecture
 
@@ -36,9 +36,9 @@ graph TD
 
 ## Data Models
 
-每条命令包含：`id`, `name_zh`, `name_en`, `command`, `category`, `since`, `until`, `source`, `note`。
+每条命令包含：`id`, `name_zh`, `name_en`, `command`, `category`, `since`, `until`, `source`, `note`, `scope`, `target`, `target_mode`, `dlc`, `lore`, `target_hint`, `pre_commands`。
 
-版本选择后只保留 `since <= version <= until` 的条目。内置条目 `source=vanilla`；扫描结果 `source=mod`（原版扫描为 `vanilla`）进入 MOD 分类。扫描条目的 `since` 固定为 `3.0.0`，因为 MOD 内容与应用目标版本无强绑定，版本号只写入备注。
+版本选择后只保留 `since <= version <= until` 的条目。内置条目 `source=vanilla`。扫描原版文件时 `source=vanilla`，分类仍是建造舰船/巨构/事件危机；与任意内置命令重复则丢弃。扫描 MOD 时 `source=mod:...`，分类为 `MOD扫描`。扫描条目的 `since` 固定为 `3.0.0`，版本号只写入备注。
 
 ## Design Decisions
 
@@ -49,19 +49,21 @@ graph TD
 - **发送串行化**：`/api/send` 与 `/api/open_console` 共用互斥锁，并发点击不会交错按键。
 - **前端分页**：每页数量在客户端按 `cols×rows` 计算并夹到服务端上限 800，两侧页边界保持一致。
 - **构建版本**：仓库根 `VERSION` 为单一事实来源，`build.sh` 通过 `-ldflags -X main.appVersion` 注入主程序与安装器。
-- **前置条件标注**：条目携带 `scope`、`target`、`dlc`。国家事件无需选中；星球、舰队、领袖、恒星基地、局势事件需先选中对应对象；舰船事件还需 `event <id> <target id>`，前端在缺少目标 ID 时直接拦截。
+- **前置条件标注**：条目携带 `scope`、`target`、`target_mode`、`dlc`、`pre_commands`。国家事件无需选中；星球、舰队、领袖、恒星基地、局势、星系事件需先选中对应对象；舰船事件与数字目标命令会把右上角 ID 写入命令，未填有效数字时前端拦截。`annex` / `kill_country` / `force_integrate` 的 `target_mode=optional`，仅在 ID 非 0 时写入。
+- **前置命令链**：`pre_commands` 先逐条输入并回车，再输入所选命令；链内后续命令 `SkipOpen=true`。
+- **DLC 标签**：内置条目按命令/事件/舰船/巨构映射官方中文 DLC 名（启示录、纵横捭阖、四海皆臣、至臻完人、上古之遗、风起云涌、博物天枢、万物竞发、虚境幽影、灭世天罚、星界位面等）。
 - **舰船生成**：`add_ship` 在选中目标旁生成舰船，所有此类条目标注 `selected`。
 - **版本校验**：扫描游戏根目录时解析 `events/` 中的 `*_event` 作用域与 `common/global_ship_designs`、`common/ship_designs` 的设计名；内置事件 ID 或 `NAME_` 设计不存在时标为 `missing`，可用 `hide_missing=1` 过滤。仅扫描 MOD 时不校验内置条目。
 
 ## Correctness Properties
 
-- 同一 `command` 在同一分类下去重；扫描结果不与内置命令重复
+- 内置库跨分类命令唯一；扫描结果与任意内置命令重复则丢弃，扫描结果内部按分类+命令去重
 - 发送时完整写入一行后回车，不拆分中文名
 - 输入通道在敲键前确定，不会出现前缀重复
 - 扫描失败不影响内置库
 - 并发发送请求串行执行，按键不会交错
 - 客户端与服务端页大小一致，翻页不重复也不跳条
-- 需要目标 ID 的舰船事件在未填写 ID 时不会发送
+- 需要数字目标的命令在目标 ID 不是数字时不会发送；默认玩家为 0
 - 版本校验只在内置条目的 ID/设计确实缺失时标记，避免误判玩家自定义设计
 
 ## Error Handling

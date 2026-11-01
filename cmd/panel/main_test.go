@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"stellaris-console-panel/internal/catalog"
 )
 
 func TestAllowedHost(t *testing.T) {
@@ -113,6 +115,34 @@ func TestNormalizeSettings(t *testing.T) {
 	}
 	if !validVersion("4.4.6") || validVersion("4.9.9") {
 		t.Fatal("validVersion broken")
+	}
+}
+
+func TestAPIMethodGuard(t *testing.T) {
+	a := &App{store: catalog.New(), set: Settings{Version: "4.4.6", ConsoleKey: "oem3"}}
+	cases := []struct {
+		fn     func(http.ResponseWriter, *http.Request)
+		method string
+		path   string
+		want   int
+	}{
+		{a.sendCmd, http.MethodGet, "/api/send", http.StatusMethodNotAllowed},
+		{a.scanNow, http.MethodGet, "/api/scan", http.StatusMethodNotAllowed},
+		{a.openConsole, http.MethodGet, "/api/open_console", http.StatusMethodNotAllowed},
+		{a.meta, http.MethodPost, "/api/meta", http.StatusMethodNotAllowed},
+		{a.commands, http.MethodPost, "/api/commands", http.StatusMethodNotAllowed},
+		{a.detect, http.MethodPost, "/api/detect", http.StatusMethodNotAllowed},
+		{a.settings, http.MethodPut, "/api/settings", http.StatusMethodNotAllowed},
+		{a.meta, http.MethodGet, "/api/meta", http.StatusOK},
+		{a.settings, http.MethodGet, "/api/settings", http.StatusOK},
+	}
+	for _, c := range cases {
+		req := httptest.NewRequest(c.method, "http://127.0.0.1"+c.path, nil)
+		rec := httptest.NewRecorder()
+		c.fn(rec, req)
+		if rec.Code != c.want {
+			t.Fatalf("%s %s got %d want %d", c.method, c.path, rec.Code, c.want)
+		}
 	}
 }
 

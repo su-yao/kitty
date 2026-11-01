@@ -41,7 +41,7 @@ Stellaris Console Panel 是一款 Windows 桌面工具。它收集《群星》�
 4. WHEN 命令包含当前键盘布局无法直接键入的字符, THE System SHALL 整条改用剪贴板粘贴，避免重复输入
 5. WHEN 多个发送请求同时到达, THE System SHALL 串行执行，按键不得交错
 6. WHEN 命令需要选中对象或目标 ID, THE System SHALL 在按钮上标注前置条件
-7. WHEN 舰船事件缺少目标 ID, THE System SHALL 阻止发送并提示先获取舰船 ID
+7. WHEN 命令需要数字目标且当前目标 ID 不是数字, THE System SHALL 阻止发送；默认玩家为 0，`annex` / `kill_country` / `force_integrate` 仅在非 0 时写入 ID
 
 ### Requirement 3
 
@@ -49,14 +49,14 @@ Stellaris Console Panel 是一款 Windows 桌面工具。它收集《群星》�
 
 #### Acceptance Criteria
 
-1. WHEN 用户打开主界面, THE System SHALL 按分类展示命令（资源、舰船、巨构、事件、科技、遗珍、调试、MOD）
-2. WHEN 单页命令超过 24 条, THE System SHALL 提供分页控件
-3. WHEN 用户在搜索框输入关键字, THE System SHALL 按中文名、英文名、命令文本过滤结果
+1. WHEN 用户打开主界面, THE System SHALL 按分类展示命令（资源经济、建造舰船、天灾舰船、利维坦、巨构、事件危机、科技飞升、遗珍标本、行星人口、帝国外交、调试开关、MOD扫描）
+2. WHEN 命令数量超过当前屏幕平铺网格, THE System SHALL 提供分页控件
+3. WHEN 用户在搜索框输入关键字, THE System SHALL 按中文名、英文名、命令文本、备注与背景过滤结果
 4. WHEN 窗口尺寸或缩放变化, THE System SHALL 按 27 寸 2K 与 31.5 寸 4K、100% 与 150% 重新计算平铺网格，使按键铺满一屏
 
 ### Requirement 4
 
-**User Story:** AS 玩家, I want 从 3.0.0 到 4.4.6 及更新版本分版本适配, so that 当前游戏版本只显示可用命令
+**User Story:** AS 玩家, I want 从 3.0.0 到 4.5.0 分版本适配, so that 当前游戏版本只显示可用命令
 
 #### Acceptance Criteria
 
@@ -70,13 +70,13 @@ Stellaris Console Panel 是一款 Windows 桌面工具。它收集《群星》�
 
 #### Acceptance Criteria
 
-1. WHEN 用户指定游戏根目录并点击扫描, THE System SHALL 解析 `common/global_ship_designs`、`common/megastructures`、`events` 生成命令
-2. WHEN 用户指定 MOD 目录并扫描, THE System SHALL 将 MOD 内同类定义合并到「MOD」分类
+1. WHEN 用户指定游戏根目录并点击扫描, THE System SHALL 解析 `common/global_ship_designs`、`common/ship_designs`、`common/megastructures`、`events` 生成命令
+2. WHEN 用户指定 MOD 目录并扫描, THE System SHALL 将 MOD 内同类定义合并到「MOD扫描」分类
 3. WHEN 扫描结果与内置命令重复, THE System SHALL 跳过该结果，保证每条命令只有一个按钮
 4. WHEN 事件没有本地化标题, THE System SHALL 不展示该事件，避免出现无法辨认的内部 ID
 5. IF 扫描失败, THE System SHALL 保留内置命令库并显示失败原因
 6. WHEN 用户只填写 MOD 目录而未填写游戏根目录, THE System SHALL 仍允许扫描 MOD
-7. WHEN 扫描到游戏根目录, THE System SHALL 按事件文件的作用域标注星球/舰队/舰船事件，并校验内置事件 ID 与舰船设计是否存在
+7. WHEN 扫描到游戏根目录, THE System SHALL 按事件文件的作用域标注星球/舰队/舰船/局势等事件，并校验内置事件 ID 与舰船设计是否存在
 8. WHEN 内置事件或舰船设计在当前游戏文件中不存在, THE System SHALL 标记为不可用并允许一键隐藏
 
 ### Requirement 6

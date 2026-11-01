@@ -113,7 +113,11 @@ label.target select { min-width: 110px; }
 label.check { flex-direction: row; align-items: center; gap: 5px; padding-bottom: 7px; white-space: nowrap; }
 label.check input { padding: 0; }
 .empty { grid-column: 1 / -1; grid-row: 1 / -1; color: var(--muted); font-size: 14px; display: grid; place-items: center; }
-body.busy .cmd { opacity: 0.55; pointer-events: none; }
+body.busy .cmd,
+body.busy #btnOpenConsole,
+body.busy #btnScan,
+body.busy #prev,
+body.busy #next { opacity: 0.55; pointer-events: none; }
 .pager { display: flex; justify-content: center; gap: 16px; align-items: center; padding: 8px; border-top: 1px solid var(--line); flex-shrink: 0; position: relative; }
 .pager .version { position: absolute; right: 12px; color: var(--muted); font-size: 11px; }
 .err { color: var(--danger); }

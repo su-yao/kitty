@@ -428,9 +428,22 @@ func setClipboard(s string) error {
 		binary.LittleEndian.PutUint16(dst[i*2:], v)
 	}
 	procGlobalUnlock.Call(h)
-	ok, _, _ := procOpenClipboard.Call(0)
-	if ok == 0 {
-		return errors.New("OpenClipboard failed")
+	opened := false
+	var openErr error
+	for i := 0; i < 8; i++ {
+		ok, _, err := procOpenClipboard.Call(0)
+		if ok != 0 {
+			opened = true
+			break
+		}
+		openErr = err
+		time.Sleep(25 * time.Millisecond)
+	}
+	if !opened {
+		if openErr == nil || openErr == syscall.Errno(0) {
+			return errors.New("OpenClipboard failed")
+		}
+		return openErr
 	}
 	defer procCloseClipboard.Call()
 	procEmptyClipboard.Call()
