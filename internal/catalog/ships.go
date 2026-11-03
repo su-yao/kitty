@@ -11,6 +11,7 @@ func ships() []Entry {
 		ship("殖民船", "Colony Ship", "NAME_Colony_Ship", "3.0.0", ""),
 		ship("运输船", "Transport", "NAME_Transport", "3.0.0", ""),
 		ship("护卫舰", "Corvette", "NAME_Corvette", "3.0.0", "玩家最新设计名因帝国而异，此为全局设计"),
+		ship("护航舰", "Frigate", "NAME_Frigate", "3.6.0", "导弹艇，3.6 后独立舰级"),
 		ship("驱逐舰", "Destroyer", "NAME_Destroyer", "3.0.0", ""),
 		ship("巡洋舰", "Cruiser", "NAME_Cruiser", "3.0.0", ""),
 		ship("战列舰", "Battleship", "NAME_Battleship", "3.0.0", ""),
@@ -43,6 +44,10 @@ func ships() []Entry {
 		ship("先驱者级泰坦", "Grand Herald", "NAME_Herald", "3.0.0", "伟大先驱考古"),
 		ship("视界刺针", "Horizon Needle", "NAME_Horizon_Needle", "3.12.0", "宇宙创生"),
 		ship("圣骑士舰", "Paladin Ship", "NAME_Paladin", "4.4.0", "游牧/银河守护者"),
+		ship("撕裂者", "Mauler", "NAME_Mauler", "4.0.0", "生物舰 幼体级"),
+		ship("编织者", "Weaver", "NAME_Weaver", "4.0.0", "生物舰"),
+		ship("先驱者", "Harbinger", "NAME_Harbinger", "4.0.0", "生物舰"),
+		ship("刺针", "Stinger", "NAME_Stinger", "4.0.0", "生物舰"),
 		e("瞬间建造开关", "Instant Build", "instant_build", CatShip, "3.0.0", "舰船与巨构均生效，对 AI 同样生效，用完关闭"),
 		e("瞬间移动开关", "Instant Move", "tweakergui instant_move", CatShip, "3.0.0", "舰船右键即瞬移"),
 		e("无敌开关", "Invincible", "invincible", CatShip, "3.0.0", "仅舰队"),
@@ -58,6 +63,10 @@ func ships() []Entry {
 		"add_ship NAME_Juggernaut":              "纵横捭阖",
 		"add_ship NAME_Horizon_Needle":          "机械纪元",
 		"add_ship NAME_Paladin":                 "游牧",
+		"add_ship NAME_Mauler":                  "万物竞发",
+		"add_ship NAME_Weaver":                  "万物竞发",
+		"add_ship NAME_Harbinger":               "万物竞发",
+		"add_ship NAME_Stinger":                 "万物竞发",
 	}
 	for i := range list {
 		if d, ok := dlc[list[i].Command]; ok {

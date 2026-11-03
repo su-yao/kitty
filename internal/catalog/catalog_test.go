@@ -45,6 +45,38 @@ func TestVersionFilter(t *testing.T) {
 	if page.Total == 0 {
 		t.Fatal("4.4.6 should show stellar cannon")
 	}
+	page = s.List(CatShip, "护航舰", "3.5.0", 1, 50)
+	if page.Total != 0 {
+		t.Fatalf("3.5 should hide frigate, got %d", page.Total)
+	}
+	page = s.List(CatShip, "护航舰", "3.6.0", 1, 50)
+	if page.Total == 0 {
+		t.Fatal("3.6 should show frigate")
+	}
+	page = s.List(CatResource, "生物质", "3.14.0", 1, 50)
+	if page.Total != 0 {
+		t.Fatalf("3.14 should hide biomass, got %d", page.Total)
+	}
+	page = s.List(CatResource, "生物质", "4.0.0", 1, 50)
+	if page.Total == 0 {
+		t.Fatal("4.0 should show biomass")
+	}
+	page = s.List(CatResource, "结晶熵", "4.0.0", 1, 50)
+	if page.Total != 0 {
+		t.Fatalf("4.0 should hide crystallized entropy, got %d", page.Total)
+	}
+	page = s.List(CatResource, "结晶熵", "4.1.0", 1, 50)
+	if page.Total == 0 {
+		t.Fatal("4.1 should show crystallized entropy")
+	}
+	page = s.List(CatPlanet, "火山星球", "4.0.0", 1, 50)
+	if page.Total != 0 {
+		t.Fatalf("4.0 should hide volcanic world, got %d", page.Total)
+	}
+	page = s.List(CatPlanet, "火山星球", "4.1.0", 1, 50)
+	if page.Total == 0 {
+		t.Fatal("4.1 should show volcanic world")
+	}
 }
 
 func TestSearchCash(t *testing.T) {
@@ -595,6 +627,7 @@ func TestInferredScopes(t *testing.T) {
 		"effect remove_megastructure = this":     "selected",
 		"finish_rift_stage":                      "selected",
 		"effect enrage_behemoth":                 "selected",
+		"effect add_awareness = 10":              "selected",
 		"skills 10":                              "leader",
 		"spawn_astral_rift":                      "system",
 		"kill_pop 0":                             "pop",
@@ -726,6 +759,11 @@ func TestTargetModeAndDLC(t *testing.T) {
 		"astral_threads 5000":                  "星界位面",
 		"menace 5000":                          "灭世天罚",
 		"advanced_logic 5000":                  "机械纪元",
+		"resource biomass 5000":                "万物竞发",
+		"resource sr_entropy 5000":             "炼狱物种包",
+		"planet_class pc_relic":                "上古之遗",
+		"add_ship NAME_Mauler":                 "万物竞发",
+		"effect add_awareness = 10":            "第一次接触",
 		"instant_build":                        "",
 	}
 	gotMode := map[string]string{}

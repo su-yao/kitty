@@ -107,19 +107,22 @@ func TestNormalizeSettings(t *testing.T) {
 	if s.GameRoot != `D:\\Stellaris` {
 		t.Fatalf("game root not trimmed: %q", s.GameRoot)
 	}
-	if s.Version != "4.4.6" {
+	if s.Version != catalog.DefaultVersion {
 		t.Fatalf("invalid version not reset: %q", s.Version)
 	}
 	if s.ConsoleKey != "oem3" {
 		t.Fatalf("invalid console key not reset: %q", s.ConsoleKey)
 	}
-	if !validVersion("4.4.6") || validVersion("4.9.9") {
+	if !validVersion("4.5.0") || !validVersion("4.4.6") || validVersion("4.9.9") {
 		t.Fatal("validVersion broken")
+	}
+	if !validConsoleKey("shift+alt+c") || !validConsoleKey("^") || validConsoleKey("ctrl+c") {
+		t.Fatal("validConsoleKey broken")
 	}
 }
 
 func TestAPIMethodGuard(t *testing.T) {
-	a := &App{store: catalog.New(), set: Settings{Version: "4.4.6", ConsoleKey: "oem3"}}
+	a := &App{store: catalog.New(), set: Settings{Version: catalog.DefaultVersion, ConsoleKey: "oem3"}}
 	cases := []struct {
 		fn     func(http.ResponseWriter, *http.Request)
 		method string

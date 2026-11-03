@@ -69,6 +69,7 @@ const (
 	SC_1                  = 0x02
 	SC_F12                = 0x58
 	SC_LALT               = 0x38
+	SC_C                  = 0x2E
 )
 
 var usScan = map[rune]uint16{
@@ -290,14 +291,16 @@ func focus(hwnd uintptr) error {
 func openConsole(key string) {
 	k := strings.ToLower(strings.TrimSpace(key))
 	switch k {
-	case "oem3", "~", "`", "tilde", "":
+	case "oem3", "~", "`", "tilde", "^", "caret", "°", "degree", "²", "squared", "":
 		tapScan(SC_GRAVE)
 	case "shift+2":
 		tapComboScan(SC_LSHIFT, SC_2)
-	case "shift+3":
+	case "shift+3", "§", "section":
 		tapComboScan(SC_LSHIFT, SC_3)
 	case "alt+21", "alt+2+1":
 		tapComboScan2(SC_LALT, SC_2, SC_1)
+	case "shift+alt+c":
+		tapComboScanMods(SC_LSHIFT, SC_LALT, SC_C)
 	case "f12":
 		tapScan(SC_F12)
 	default:
@@ -332,6 +335,19 @@ func tapComboScan2(mod, k1, k2 uint16) {
 	time.Sleep(18 * time.Millisecond)
 	sendScan(k2, true)
 	sendScan(mod, true)
+	time.Sleep(18 * time.Millisecond)
+}
+
+func tapComboScanMods(mod1, mod2, key uint16) {
+	sendScan(mod1, false)
+	time.Sleep(12 * time.Millisecond)
+	sendScan(mod2, false)
+	time.Sleep(12 * time.Millisecond)
+	sendScan(key, false)
+	time.Sleep(18 * time.Millisecond)
+	sendScan(key, true)
+	sendScan(mod2, true)
+	sendScan(mod1, true)
 	time.Sleep(18 * time.Millisecond)
 }
 

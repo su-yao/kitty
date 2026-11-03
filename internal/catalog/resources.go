@@ -36,6 +36,9 @@ func resources() []Entry {
 	items = append(items,
 		e("星界丝缕 +5000", "Astral Threads", "astral_threads 5000", CatResource, "3.10.0", "星界位面"),
 		e("高级逻辑 +5000", "Advanced Logic", "advanced_logic 5000", CatResource, "3.12.0", "宇宙创生"),
+		e("贸易 +5000", "Trade", "resource trade 5000", CatResource, "4.0.0", "4.0 经济"),
+		e("生物质 +5000", "Biomass", "resource biomass 5000", CatResource, "4.0.0", "万物竞发 / 荒野起源"),
+		e("结晶熵 +5000", "Crystallized Entropy", "resource sr_entropy 5000", CatResource, "4.1.0", "炼狱物种包 星系热症"),
 	)
 	return items
 }

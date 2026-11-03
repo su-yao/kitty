@@ -28,7 +28,7 @@ const (
 )
 
 // appVersion can be overridden at build time with -X main.appVersion=...
-var appVersion = "1.3.9"
+var appVersion = "1.4.0"
 
 // silentMode suppresses interactive "press enter" prompts, which would hang
 // unattended installs launched with /S.
@@ -168,6 +168,9 @@ func runInstall(opts installOpts) error {
 	if opts.Dest == "" {
 		opts.Dest = defaultDir()
 	}
+	fmt.Println("正在结束已运行的面板...")
+	terminateApp()
+	time.Sleep(300 * time.Millisecond)
 	fmt.Println("正在复制文件...")
 	n, err := extractPayload(opts.Dest)
 	if err != nil {

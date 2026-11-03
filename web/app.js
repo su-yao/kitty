@@ -2,7 +2,7 @@ const state = {
   category: "resource",
   page: 1,
   pageSize: 40,
-  version: "4.4.6",
+  version: "4.5.0",
   totalPages: 1,
   cols: 8,
   rows: 5,
@@ -89,7 +89,7 @@ async function loadMeta() {
     o.textContent = v;
     sel.appendChild(o);
   });
-  sel.value = data.default_version || "4.4.6";
+  sel.value = data.default_version || "4.5.0";
   state.version = sel.value;
   const cats = $("cats");
   cats.innerHTML = "";

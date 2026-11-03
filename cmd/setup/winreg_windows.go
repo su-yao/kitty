@@ -19,8 +19,8 @@ func createShortcut(dir, name, target, workDir, desc string) error {
 	}
 	lnk := filepath.Join(dir, name)
 	ps := fmt.Sprintf(
-		"$s=(New-Object -ComObject WScript.Shell).CreateShortcut(%s); $s.TargetPath=%s; $s.WorkingDirectory=%s; $s.Description=%s; $s.WindowStyle=1; $s.Save()",
-		psQuote(lnk), psQuote(target), psQuote(workDir), psQuote(desc),
+		"$s=(New-Object -ComObject WScript.Shell).CreateShortcut(%s); $s.TargetPath=%s; $s.WorkingDirectory=%s; $s.Description=%s; $s.IconLocation=%s; $s.WindowStyle=1; $s.Save()",
+		psQuote(lnk), psQuote(target), psQuote(workDir), psQuote(desc), psQuote(target+",0"),
 	)
 	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", ps)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}

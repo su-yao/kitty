@@ -181,7 +181,7 @@ func (a *App) meta(w http.ResponseWriter, r *http.Request) {
 		"version":         appVersion,
 		"categories":      catalog.Categories,
 		"versions":        catalog.Versions,
-		"default_version": or(s.Version, "4.4.6"),
+		"default_version": or(s.Version, catalog.DefaultVersion),
 		"settings":        s,
 		"scanned":         a.store.ScannedCount(),
 	})
@@ -394,7 +394,7 @@ func normalizeSettings(s Settings) Settings {
 	s.Workshop = trim(s.Workshop)
 	s.ExtraMods = trim(s.ExtraMods)
 	if !validVersion(s.Version) {
-		s.Version = "4.4.6"
+		s.Version = catalog.DefaultVersion
 	}
 	if !validConsoleKey(s.ConsoleKey) {
 		s.ConsoleKey = "oem3"
@@ -413,7 +413,8 @@ func validVersion(v string) bool {
 
 func validConsoleKey(k string) bool {
 	switch strings.ToLower(strings.TrimSpace(k)) {
-	case "oem3", "~", "`", "tilde", "shift+2", "shift+3", "alt+21", "alt+2+1", "f12":
+	case "oem3", "~", "`", "tilde", "^", "caret", "°", "degree", "²", "squared",
+		"shift+2", "shift+3", "§", "section", "alt+21", "alt+2+1", "shift+alt+c", "f12":
 		return true
 	}
 	return false
@@ -443,14 +444,14 @@ func configPath() string {
 }
 
 func loadSettings() Settings {
-	s := Settings{Version: "4.4.6", ConsoleKey: "oem3"}
+	s := Settings{Version: catalog.DefaultVersion, ConsoleKey: "oem3"}
 	b, err := os.ReadFile(configPath())
 	if err != nil {
 		return s
 	}
 	_ = json.Unmarshal(b, &s)
 	if s.Version == "" {
-		s.Version = "4.4.6"
+		s.Version = catalog.DefaultVersion
 	}
 	if s.ConsoleKey == "" {
 		s.ConsoleKey = "oem3"

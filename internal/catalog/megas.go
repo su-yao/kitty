@@ -287,7 +287,7 @@ func megas() []Entry {
 		mega("损坏量子弹弓", "Ruined Catapult", "quantum_catapult_ruined", "3.4.0", ""),
 		mega("星环基地", "Orbital Ring", "orbital_ring", "3.4.0", "需选中行星"),
 		mega("损坏星环基地", "Ruined Orbital Ring", "orbital_ring_ruined", "3.4.0", "需选中行星，可能无法修复"),
-		mega("以太相引擎 完成", "Aetherophasic Engine", "crisis_sphere_4", "3.0.0", "化身天灾终局"),
+		mega("以太相引擎 完成", "Aetherophasic Engine", "crisis_sphere_4", "3.0.0", "星海天罚终局"),
 		mega("以太相引擎 框架", "Engine Frame", "crisis_sphere_0", "3.0.0", ""),
 		mega("以太相引擎 阶段3", "Engine Stage 3", "crisis_sphere_3", "3.0.0", ""),
 		mega("损坏以太相引擎", "Ruined Engine", "crisis_sphere_ruined", "3.0.0", ""),

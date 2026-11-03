@@ -19,7 +19,7 @@ func crisisShips() []Entry {
 		cship("肃正恒星基地", "AI Starbase", "NAME_AI_STARBASE", "3.0.0", ""),
 		cship("灰蛊拦截者", "Graygoo Interdictor", "NAME_Nanite_Interdictor", "3.0.0", "L星团"),
 		cship("灰蛊母舰", "Graygoo Mothership", "NAME_Nanite_Mothership", "3.0.0", ""),
-		cship("焚天神兵", "Star Eater", "NAME_Crisis_Star_Eater", "3.0.0", "化身天灾"),
+		cship("焚天神兵", "Star Eater", "NAME_Crisis_Star_Eater", "3.0.0", "星海天罚"),
 		cship("女王泰坦 塞塔娜", "Cetana Titan", "NAME_Synth_Queen_Titan", "3.12.0", "合成女王"),
 		cship("女王护卫", "Queen Royal Guard", "NAME_Synth_Queen_Royal_Guard", "3.12.0", ""),
 		cship("女王猎手", "Queen Harrier", "NAME_Synth_Queen_Harrier", "3.12.0", ""),

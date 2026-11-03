@@ -106,6 +106,8 @@ var Versions = []string{
 	"4.0.0", "4.1.0", "4.2.0", "4.3.0", "4.4.0", "4.4.6", "4.5.0",
 }
 
+var DefaultVersion = Versions[len(Versions)-1]
+
 type Hints struct {
 	EventScopes     map[string]string
 	EventIDs        map[string]bool
@@ -451,7 +453,8 @@ var preByCommand = map[string][]string{
 func inferScope(cmd string) string {
 	switch {
 	case cmd == "own" || cmd == "effect remove_megastructure = this" ||
-		cmd == "finish_rift_stage" || cmd == "effect enrage_behemoth":
+		cmd == "finish_rift_stage" || cmd == "effect enrage_behemoth" ||
+		cmd == "effect add_awareness = 10":
 		return "selected"
 	case cmd == "invincible" || strings.HasPrefix(cmd, "damage ") ||
 		cmd == "effect destroy_fleet = this" || cmd == "break_fleet_contract":
@@ -629,6 +632,12 @@ var dlcByCommand = map[string]string{
 	"research_technology tech_colossus":   "启示录",
 	"research_technology tech_juggernaut": "纵横捭阖",
 	"activate_ascension_perk ap_become_the_crisis": "灭世天罚",
+	"effect add_awareness = 10":                    "第一次接触",
+	"resource biomass 5000":                        "万物竞发",
+	"resource sr_entropy 5000":                     "炼狱物种包",
+	"planet_class pc_relic":                        "上古之遗",
+	"planet_class pc_nanotech":                     "机械纪元",
+	"planet_class pc_volcanic":                     "炼狱物种包",
 	"activate_ascension_perk ap_cosmogenesis":      "机械纪元",
 	"activate_ascension_perk ap_nanotech":          "机械纪元",
 	"activate_ascension_perk ap_modularity":        "机械纪元",
@@ -689,6 +698,10 @@ var dlcByShip = map[string]string{
 	"NAME_Behemoth_04":             "万物竞发",
 	"NAME_Venomous_Deity":          "毒物物种包",
 	"NAME_Crisis_Star_Eater":       "灭世天罚",
+	"NAME_Mauler":                  "万物竞发",
+	"NAME_Weaver":                  "万物竞发",
+	"NAME_Harbinger":               "万物竞发",
+	"NAME_Stinger":                 "万物竞发",
 }
 
 var dlcByMega = map[string]string{
