@@ -339,6 +339,8 @@ func (s *Store) decorate(e Entry) Entry {
 		e.TargetHint = "先在游戏中选中目标星系。裂隙会生成在该星系。"
 	case "effect enrage_behemoth":
 		e.TargetHint = "先选中玩家舰队、恒星基地或星球。"
+	case "effect add_awareness = 10":
+		e.TargetHint = "先在外交菜单选中前超光速文明，再发送。命令本身不附加数字 ID。"
 	case "annex":
 		e.TargetHint = "不填 ID 时吞并当前选中帝国。右上角选非 0 的帝国 ID 会写入命令，默认 0 不写入。"
 	case "force_integrate":
@@ -404,7 +406,11 @@ func fillTargets(e Entry) Entry {
 	case e.Scope == "selected":
 		e.DefaultTarget = "0"
 		e.Targets = []TargetOpt{player}
-		e.TargetHint = "先选中玩家舰队、星球或恒星，新对象会生成在该单位旁边。"
+		if _, ok := shipDesign(e.Command); ok {
+			e.TargetHint = "先选中玩家舰队、星球或恒星，新对象会生成在该单位旁边。"
+		} else {
+			e.TargetHint = "先在游戏中选中目标，再发送。命令本身不附加数字 ID。"
+		}
 	case e.Target || needsCountryID(e.Command):
 		e.DefaultTarget = "0"
 		e.Targets = []TargetOpt{

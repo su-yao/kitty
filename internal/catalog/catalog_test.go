@@ -687,6 +687,17 @@ func TestInferredScopes(t *testing.T) {
 			if !strings.Contains(e.TargetHint, "领袖") {
 				t.Fatalf("kill_leader hint should mention 领袖: %q", e.TargetHint)
 			}
+		case "effect add_awareness = 10":
+			if !strings.Contains(e.TargetHint, "前超光速") {
+				t.Fatalf("awareness hint should mention 前超光速: %q", e.TargetHint)
+			}
+			if strings.Contains(e.TargetHint, "新对象会生成") {
+				t.Fatalf("awareness hint should not reuse ship spawn text: %q", e.TargetHint)
+			}
+		}
+		if e.Scope == "selected" && !strings.HasPrefix(e.Command, "add_ship ") &&
+			strings.Contains(e.TargetHint, "新对象会生成") {
+			t.Fatalf("%s should not use ship spawn hint: %q", e.Command, e.TargetHint)
 		}
 	}
 }
