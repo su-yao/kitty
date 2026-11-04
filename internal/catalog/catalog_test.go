@@ -632,7 +632,7 @@ func TestInferredScopes(t *testing.T) {
 		"spawn_astral_rift":                      "system",
 		"kill_pop 0":                             "pop",
 		"kill_leader 0":                          "leader",
-		"kill_ruler":                             "leader",
+		"kill_ruler":                             "",
 		"add_trait_leader 0 leader_trait_gale_speed": "leader",
 		"instant_build":                          "",
 	}
@@ -686,6 +686,17 @@ func TestInferredScopes(t *testing.T) {
 		case "kill_leader 0":
 			if !strings.Contains(e.TargetHint, "领袖") {
 				t.Fatalf("kill_leader hint should mention 领袖: %q", e.TargetHint)
+			}
+		case "kill_ruler":
+			if !strings.Contains(e.TargetHint, "统治者") {
+				t.Fatalf("kill_ruler hint should mention 统治者: %q", e.TargetHint)
+			}
+			if strings.Contains(e.TargetHint, "选中玩家领袖") {
+				t.Fatalf("kill_ruler hint should not ask to select a leader: %q", e.TargetHint)
+			}
+		case "finish_arc_stage":
+			if !strings.Contains(e.TargetHint, "考古") {
+				t.Fatalf("arc hint should mention 考古: %q", e.TargetHint)
 			}
 		case "effect add_awareness = 10":
 			if !strings.Contains(e.TargetHint, "前超光速") {
@@ -775,6 +786,7 @@ func TestTargetModeAndDLC(t *testing.T) {
 		"planet_class pc_relic":                "上古之遗",
 		"add_ship NAME_Mauler":                 "万物竞发",
 		"effect add_awareness = 10":            "第一次接触",
+		"event crisis.4550":                    "灭世天罚",
 		"instant_build":                        "",
 	}
 	gotMode := map[string]string{}
@@ -803,6 +815,16 @@ func TestTargetModeAndDLC(t *testing.T) {
 	}
 	if lgate.DLC != "遥远繁星" {
 		t.Fatalf("lgate dlc=%q", lgate.DLC)
+	}
+	var engine Entry
+	for _, e := range page.Items {
+		if id, ok := megaType(e.Command); ok && id == "crisis_sphere_4" {
+			engine = e
+			break
+		}
+	}
+	if engine.DLC != "灭世天罚" {
+		t.Fatalf("aetherophasic engine dlc=%q", engine.DLC)
 	}
 	horizon := s.List(CatEvent, "地平线信号", "4.4.6", 1, 10)
 	if horizon.Total == 0 || !horizon.Items[0].Target || horizon.Items[0].TargetMode != "append" {

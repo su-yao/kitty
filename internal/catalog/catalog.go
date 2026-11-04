@@ -341,6 +341,10 @@ func (s *Store) decorate(e Entry) Entry {
 		e.TargetHint = "先选中玩家舰队、恒星基地或星球。"
 	case "effect add_awareness = 10":
 		e.TargetHint = "先在外交菜单选中前超光速文明，再发送。命令本身不附加数字 ID。"
+	case "kill_ruler":
+		e.TargetHint = "杀死当前玩家帝国的统治者。命令本身不附加数字 ID。"
+	case "finish_arc_stage":
+		e.TargetHint = "先选中考古星球，并确保有科研船正在挖掘。"
 	case "annex":
 		e.TargetHint = "不填 ID 时吞并当前选中帝国。右上角选非 0 的帝国 ID 会写入命令，默认 0 不写入。"
 	case "force_integrate":
@@ -370,7 +374,11 @@ func fillTargets(e Entry) Entry {
 	case e.Scope == "leader":
 		e.DefaultTarget = "0"
 		e.Targets = []TargetOpt{{ID: "0", Label: "领袖 0"}}
-		e.TargetHint = "先在游戏中选中玩家领袖。带数字的命令里，右上角 ID 会写入命令。"
+		if e.TargetMode != "" {
+			e.TargetHint = "先在游戏中选中玩家领袖。带数字的命令里，右上角 ID 会写入命令。"
+		} else {
+			e.TargetHint = "先在游戏中选中玩家领袖。"
+		}
 	case e.Target && (e.Scope == "ship" || strings.HasPrefix(e.Command, "event ")):
 		e.DefaultTarget = "0"
 		e.Targets = []TargetOpt{{ID: "0", Label: "玩家开局科研船"}}
@@ -473,7 +481,7 @@ func inferScope(cmd string) string {
 		return "system"
 	case strings.HasPrefix(cmd, "kill_pop "):
 		return "pop"
-	case cmd == "kill_ruler" || strings.HasPrefix(cmd, "kill_leader ") ||
+	case strings.HasPrefix(cmd, "kill_leader ") ||
 		strings.HasPrefix(cmd, "skills ") || strings.HasPrefix(cmd, "add_trait_leader "):
 		return "leader"
 	case cmd == "branchoffice" || cmd == "finish_arc_stage" || planetScoped(cmd):
@@ -663,10 +671,14 @@ var dlcByCommand = map[string]string{
 	"astral_threads 5000":             "星界位面",
 	"menace 5000":                     "灭世天罚",
 	"advanced_logic 5000":             "机械纪元",
+	"event crisis.4550":               "灭世天罚",
+	"activate_ascension_perk ap_galactic_wonders": "乌托邦",
+	"activate_ascension_perk ap_galactic_wonders_utopia_and_megacorp": "寰宇企业",
 }
 
 var dlcByEvent = map[string]string{
 	"crisis.8005":                    "机械纪元",
+	"crisis.4550":                    "灭世天罚",
 	"crisis.7516":                    "机械纪元",
 	"graygoo.1":                      "遥远繁星",
 	"graygoo.100":                    "遥远繁星",
@@ -743,6 +755,10 @@ var dlcByMega = map[string]string{
 	"military_arkship_megastructure":   "游牧",
 	"science_arkship_megastructure":    "游牧",
 	"waystation_megastructure":         "游牧",
+	"crisis_sphere_4":                  "灭世天罚",
+	"crisis_sphere_0":                  "灭世天罚",
+	"crisis_sphere_3":                  "灭世天罚",
+	"crisis_sphere_ruined":             "灭世天罚",
 }
 
 func eventID(command string) (string, bool) {
