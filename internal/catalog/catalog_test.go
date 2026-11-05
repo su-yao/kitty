@@ -788,6 +788,27 @@ func TestTargetModeAndDLC(t *testing.T) {
 		"effect add_awareness = 10":            "第一次接触",
 		"event crisis.4550":                    "灭世天罚",
 		"instant_build":                        "",
+		"activate_ascension_perk ap_mind_over_matter": "乌托邦",
+		"activate_ascension_perk ap_the_flesh_is_weak": "乌托邦",
+		"research_technology tech_dyson_sphere": "乌托邦",
+		"planet_class pc_city":                 "启示录",
+		"planet_class pc_hive":                 "乌托邦",
+		"planet_class pc_machine":              "合成黎明",
+		"resource nanites 5000":                "遥远繁星",
+		"add_relic r_galatron":                 "寰宇企业",
+		"event utopia.3308":                    "乌托邦",
+		"event galcom.16":                      "纵横捭阖",
+		"event syndaw.545":                     "合成黎明",
+		"event leviathans.1040":                "利维坦",
+		"event distar.1001":                    "遥远繁星",
+		"event marauder.500":                   "启示录",
+		"add_ship NAME_Grand_Dragon":           "利维坦",
+		"add_ship NAME_Reclaimer":              "遥远繁星",
+		"add_ship NAME_Nanite_Dragon":          "遥远繁星",
+		"add_ship NAME_Shroud_Avatar":          "乌托邦",
+		"add_ship NAME_Herald":                 "上古之遗",
+		"finish_arc_stage":                     "上古之遗",
+		"effect create_archaeological_site = random": "上古之遗",
 	}
 	gotMode := map[string]string{}
 	gotDLC := map[string]string{}
@@ -825,6 +846,38 @@ func TestTargetModeAndDLC(t *testing.T) {
 	}
 	if engine.DLC != "灭世天罚" {
 		t.Fatalf("aetherophasic engine dlc=%q", engine.DLC)
+	}
+	var dyson Entry
+	var art Entry
+	for _, e := range page.Items {
+		if id, ok := megaType(e.Command); ok {
+			switch id {
+			case "dyson_sphere_5":
+				dyson = e
+			case "mega_art_installation_4":
+				art = e
+			}
+		}
+	}
+	if dyson.DLC != "乌托邦" {
+		t.Fatalf("dyson dlc=%q", dyson.DLC)
+	}
+	if art.DLC != "寰宇企业" {
+		t.Fatalf("mega art dlc=%q", art.DLC)
+	}
+	reclaimer := s.List(CatLeviathan, "拾荒者机器人", "4.5.0", 1, 10)
+	if reclaimer.Total == 0 || reclaimer.Items[0].DLC != "遥远繁星" {
+		t.Fatalf("scavenger dlc: %+v", reclaimer.Items)
+	}
+	if strings.Contains(reclaimer.Items[0].Lore, "失落帝国泰坦") {
+		t.Fatalf("scavenger lore should not mention fallen empire titan: %q", reclaimer.Items[0].Lore)
+	}
+	col := s.List(CatPlanet, "殖民选中星球", "4.5.0", 1, 10)
+	if col.Total == 0 || col.Items[0].TargetMode != "" {
+		t.Fatalf("colonize should not rewrite the pop id from the picker: %+v", col.Items)
+	}
+	if !strings.Contains(col.Items[0].TargetHint, "人口") {
+		t.Fatalf("colonize hint should mention 人口: %q", col.Items[0].TargetHint)
 	}
 	horizon := s.List(CatEvent, "地平线信号", "4.4.6", 1, 10)
 	if horizon.Total == 0 || !horizon.Items[0].Target || horizon.Items[0].TargetMode != "append" {

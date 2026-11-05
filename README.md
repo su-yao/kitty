@@ -28,7 +28,7 @@ Windows 桌面工具：把《群星》原版与 MOD 的控制台命令做成分�
 
 只需要 `StellarisConsolePanel-Setup-<版本>.exe`（自包含安装包，已嵌入主程序）。
 
-1. 双击 `StellarisConsolePanel-Setup-1.4.2.exe`，在 UAC 提示选择「是」
+1. 双击 `StellarisConsolePanel-Setup-1.4.3.exe`，在 UAC 提示选择「是」
 2. 确认安装目录（默认 `C:\Program Files\StellarisConsolePanel`）
 3. 选择是否创建开始菜单 / 桌面快捷方式
 4. 安装完成后从开始菜单打开 StellarisConsolePanel
@@ -37,8 +37,8 @@ Windows 桌面工具：把《群星》原版与 MOD 的控制台命令做成分�
 静默安装：
 
 ```
-StellarisConsolePanel-Setup-1.4.2.exe /S
-StellarisConsolePanel-Setup-1.4.2.exe /S /DIR="D:\Games\StellarisConsolePanel"
+StellarisConsolePanel-Setup-1.4.3.exe /S
+StellarisConsolePanel-Setup-1.4.3.exe /S /DIR="D:\Games\StellarisConsolePanel"
 ```
 
 卸载：
@@ -63,7 +63,7 @@ StellarisConsolePanel-Setup-1.4.2.exe /S /DIR="D:\Games\StellarisConsolePanel"
 go test ./internal/catalog ./internal/scan
 
 # 启动预览
-./dist/linux/StellarisConsolePanel-1.4.2
+./dist/linux/StellarisConsolePanel-1.4.3
 ```
 
 ## 从源码打包 Windows EXE
@@ -79,9 +79,9 @@ bash scripts/build.sh
 
 产物：
 
-- `dist/windows/StellarisConsolePanel-Setup-1.4.2.exe` 标准安装包（双击安装）
-- `dist/windows/StellarisConsolePanel-1.4.2.exe` 便携主程序
-- `dist/linux/StellarisConsolePanel-1.4.2` 预览
+- `dist/windows/StellarisConsolePanel-Setup-1.4.3.exe` 标准安装包（双击安装）
+- `dist/windows/StellarisConsolePanel-1.4.3.exe` 便携主程序
+- `dist/linux/StellarisConsolePanel-1.4.3` 预览
 
 ## 使用注意
 
