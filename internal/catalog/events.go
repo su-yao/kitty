@@ -81,6 +81,7 @@ func events() []Entry {
 		e("完成首次接触", "Complete first contact", "complete_first_contact", CatEvent, "3.0.0", "选中接触"),
 		e("添加首次接触线索", "First contact clues", "add_first_contact_clues 10", CatEvent, "3.0.0", "选中进行中的首次接触"),
 		e("完成全部帝国焦点", "Complete focus tasks", "complete_focus_tasks", CatEvent, "3.8.0", ""),
+		e("完成焦点任务 1", "Complete focus task 1", "complete_focus_task 1", CatEvent, "3.8.0", "完成编号 1 的帝国焦点任务"),
 		e("局势进度 +100", "Situation +100", "effect add_situation_progress = 100", CatEvent, "3.0.0", "先选中局势"),
 		e("结束选中局势", "Destroy situation", "effect destroy_situation = this", CatEvent, "3.0.0", ""),
 		e("摧毁选中舰队", "Destroy fleet", "effect destroy_fleet = this", CatEvent, "3.0.0", "先选中舰队"),

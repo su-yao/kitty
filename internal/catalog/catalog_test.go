@@ -628,7 +628,11 @@ func TestInferredScopes(t *testing.T) {
 		"finish_rift_stage":                      "selected",
 		"effect enrage_behemoth":                 "selected",
 		"effect add_awareness = 10":              "selected",
-		"skills 10":                              "leader",
+		"skills 10":                              "",
+		"build_pops 10":                          "planet",
+		"grow_pops 10":                           "planet",
+		"add_to_vivarium":                        "fleet",
+		"add_psionic_aura_intensity 5":           "system",
 		"spawn_astral_rift":                      "system",
 		"kill_pop 0":                             "pop",
 		"kill_leader 0":                          "leader",
@@ -704,6 +708,17 @@ func TestInferredScopes(t *testing.T) {
 			}
 			if strings.Contains(e.TargetHint, "新对象会生成") {
 				t.Fatalf("awareness hint should not reuse ship spawn text: %q", e.TargetHint)
+			}
+		case "skills 10":
+			if strings.Contains(e.TargetHint, "选中玩家领袖") {
+				t.Fatalf("skills hint should not ask to select a leader: %q", e.TargetHint)
+			}
+			if !strings.Contains(e.TargetHint, "全部领袖") {
+				t.Fatalf("skills hint should mention 全部领袖: %q", e.TargetHint)
+			}
+		case "add_to_vivarium":
+			if !strings.Contains(e.TargetHint, "太空生物") {
+				t.Fatalf("vivarium hint should mention 太空生物: %q", e.TargetHint)
 			}
 		}
 		if e.Scope == "selected" && !strings.HasPrefix(e.Command, "add_ship ") &&
@@ -809,6 +824,12 @@ func TestTargetModeAndDLC(t *testing.T) {
 		"add_ship NAME_Herald":                 "上古之遗",
 		"finish_arc_stage":                     "上古之遗",
 		"effect create_archaeological_site = random": "上古之遗",
+		"advance_council_agenda":               "至臻完人",
+		"add_to_vivarium":                      "博物天枢",
+		"create_patron_relation patron_composer": "虚境幽影",
+		"max_patron_relation patron_composer":    "虚境幽影",
+		"skip_accord_cooldowns":                "虚境幽影",
+		"add_psionic_aura_intensity 5":         "风起云涌",
 	}
 	gotMode := map[string]string{}
 	gotDLC := map[string]string{}

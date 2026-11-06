@@ -353,6 +353,12 @@ func (s *Store) decorate(e Entry) Entry {
 		e.TargetHint = "不填 ID 时杀死当前选中国家。右上角选非 0 的帝国 ID 会写入命令，默认 0 不写入。"
 	case "colonize 1":
 		e.TargetHint = "先选中未殖民星球。命令里的 1 是殖民舰人口 ID，默认即可。"
+	case "add_to_vivarium":
+		e.TargetHint = "先选中太空生物舰队。命令会把该舰队的副本放入生物馆。"
+	case "skills 10":
+		e.TargetHint = "对玩家帝国全部领袖生效，无需选中单个领袖。"
+	case "add_psionic_aura_intensity 5":
+		e.TargetHint = "先选中目标星系。命令会改变该星系的灵能光环强度。"
 	}
 	if e.Lore == "" {
 		e.Lore = loreFor(e)
@@ -473,18 +479,20 @@ func inferScope(cmd string) string {
 		cmd == "effect add_awareness = 10":
 		return "selected"
 	case cmd == "invincible" || strings.HasPrefix(cmd, "damage ") ||
-		cmd == "effect destroy_fleet = this" || cmd == "break_fleet_contract":
+		cmd == "effect destroy_fleet = this" || cmd == "break_fleet_contract" ||
+		cmd == "add_to_vivarium":
 		return "fleet"
 	case cmd == "complete_first_contact" || strings.HasPrefix(cmd, "add_first_contact_clues "):
 		return "first_contact"
 	case strings.Contains(cmd, "add_situation_progress") || strings.Contains(cmd, "destroy_situation"):
 		return "situation"
-	case cmd == "spawn_astral_rift":
+	case cmd == "spawn_astral_rift" || strings.HasPrefix(cmd, "add_psionic_aura_intensity "):
 		return "system"
 	case strings.HasPrefix(cmd, "kill_pop "):
 		return "pop"
 	case strings.HasPrefix(cmd, "kill_leader ") ||
-		strings.HasPrefix(cmd, "skills ") || strings.HasPrefix(cmd, "add_trait_leader "):
+		strings.HasPrefix(cmd, "add_trait_leader ") ||
+		strings.HasPrefix(cmd, "remove_trait_leader "):
 		return "leader"
 	case cmd == "branchoffice" || cmd == "finish_arc_stage" || planetScoped(cmd):
 		return "planet"
@@ -494,12 +502,12 @@ func inferScope(cmd string) string {
 
 func planetScoped(cmd string) bool {
 	switch cmd {
-	case "finish_terraform", "grow_pops", "control":
+	case "finish_terraform", "control":
 		return true
 	}
 	for _, p := range []string{
 		"planet_class ", "planet_size ", "planet_happiness ", "planet_ascension_tier ",
-		"colonize ", "add_pops ", "add_anomaly ",
+		"colonize ", "add_pops ", "build_pops ", "grow_pops ", "add_anomaly ",
 		"effect destroy_colony", "effect add_planet_devastation",
 		"effect add_district", "effect add_building",
 		"effect add_deposit", "effect remove_deposit",
@@ -529,7 +537,8 @@ func inferTargetMode(cmd, scope string, target bool) string {
 	switch {
 	case strings.HasPrefix(cmd, "kill_pop "):
 		return "last"
-	case strings.HasPrefix(cmd, "kill_leader "), strings.HasPrefix(cmd, "add_trait_leader "):
+	case strings.HasPrefix(cmd, "kill_leader "), strings.HasPrefix(cmd, "add_trait_leader "),
+		strings.HasPrefix(cmd, "remove_trait_leader "):
 		return "first"
 	case strings.HasPrefix(cmd, "play "):
 		return "last"
@@ -660,7 +669,15 @@ var dlcByCommand = map[string]string{
 	"activate_ascension_perk ap_behemoth_fury":     "万物竞发",
 	"activate_ascension_perk ap_galactic_hyperthermia": "炼狱物种包",
 	"effect unlock_council_slots = 1": "至臻完人",
+	"advance_council_agenda":          "至臻完人",
 	"add_specimen random":             "博物天枢",
+	"add_to_vivarium":                 "博物天枢",
+	"create_patron_relation patron_composer": "虚境幽影",
+	"max_patron_relation patron_composer":    "虚境幽影",
+	"skip_accord_cooldowns":                  "虚境幽影",
+	"skip_calling_cooldowns":                 "虚境幽影",
+	"skip_delve_cooldown":                    "乌托邦",
+	"add_psionic_aura_intensity 5":           "风起云涌",
 	"add_relic r_head_of_zarqlan":     "上古之遗",
 	"add_relic r_cetanas_heart":       "机械纪元",
 	"spawn_astral_rift":               "星界位面",
