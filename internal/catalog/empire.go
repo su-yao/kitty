@@ -24,7 +24,7 @@ func planets() []Entry {
 		e("星球大小 25", "Planet size 25", "planet_size 25", CatPlanet, "3.0.0", "过大将后移星系"),
 		e("星球幸福 +25", "Planet happiness", "planet_happiness 25", CatPlanet, "3.0.0", "加幸福度修正"),
 		e("星球飞升等级 3", "Ascension tier 3", "planet_ascension_tier 3", CatPlanet, "3.0.0", "可超上限"),
-		e("完成环境改造", "Finish terraform", "finish_terraform", CatPlanet, "3.0.0", ""),
+		e("完成环境改造", "Finish terraform", "finish_terraform", CatPlanet, "3.0.0", "立刻完成全部进行中的环境改造"),
 		e("殖民选中星球", "Colonize", "colonize 1", CatPlanet, "3.0.0", "参数为殖民舰人口 ID，默认 1"),
 		e("添加人口 10", "Add pops 10", "add_pops 1 10", CatPlanet, "3.0.0", "物种 ID 数量，空命令列出全部 ID"),
 		e("人口增长 +10", "Grow pops 10", "grow_pops 10", CatPlanet, "3.0.0", "对选中星球增加 10 点成长中人口"),
@@ -43,6 +43,7 @@ func planets() []Entry {
 		e("添加考古遗址", "Archaeological site", "effect create_archaeological_site = random", CatPlanet, "3.0.0", "random 为随机遗址"),
 		e("添加异常", "Add anomaly", "add_anomaly life_asteroid_category", CatPlanet, "3.0.0", "换成目标异常 ID，空参数可列出"),
 		e("添加基因特质点", "Add gene points", "effect add_modifier = { modifier = cyber_creed_no_creed_robot_points_modifier multiplier = 999 }", CatPlanet, "3.0.0", "未选中任何对象时生效"),
+		e("移除圣地修正", "Remove holy world", "effect remove_modifier = holy_planet", CatPlanet, "3.0.0", "选中星球，示例为圣地；可换修正 ID"),
 	}
 }
 
@@ -84,7 +85,7 @@ func empires() []Entry {
 		e("激活全部星门", "Activate gateways", "activate_gateways", CatEmpire, "3.0.0", ""),
 		e("宣战", "Declare war", "war 0 1 wg_conquest", CatEmpire, "3.0.0", "攻击方 防御方 战争目标，如 wg_conquest"),
 		e("添加战争借口", "Add casus belli", "casusbelli cb_subjugation 2", CatEmpire, "3.0.0", "战争借口 目标帝国"),
-		e("强制投降", "Force surrender", "surrender 1", CatEmpire, "3.0.0", "空参数列出各帝国战争 ID"),
+		e("强制投降", "Force surrender", "surrender 1", CatEmpire, "3.0.0", "只填帝国 ID 时列出该国战争，再加战争 ID 才投降"),
 		e("增加战争疲惫", "War exhaustion", "warexhaustion 75", CatEmpire, "3.0.0", "对全部战争生效"),
 		e("修改帝国伦理", "Shift ethic", "effect shift_ethic = ethic_fanatic_spiritualist", CatEmpire, "3.0.0", "直接改为指定伦理"),
 		e("设置起源", "Set origin", "effect set_origin = origin_fallen_empire", CatEmpire, "3.0.0", "换起源 ID"),
@@ -119,8 +120,8 @@ func debugs() []Entry {
 		e("分支办公室", "Branch office", "branchoffice", CatDebug, "3.0.0", "选中星球，寰宇企业 DLC"),
 		e("所有舰队互相攻击", "Attack all fleets", "attackallfleets", CatDebug, "3.0.0", "测试用"),
 		e("成熟银河 100 年", "Mature galaxy", "mature_galaxy", CatDebug, "3.0.0", "模拟 100 年后的银河"),
-		e("人类帝国获得异常", "Human anomalies", "human_anomalies_for_ai", CatDebug, "3.0.0", "开关"),
-		e("AI 独有异常", "AI anomalies", "ai_anomalies", CatDebug, "3.0.0", "开关"),
+		e("AI 可调查人类异常", "Human anomalies for AI", "human_anomalies_for_ai", CatDebug, "3.0.0", "开关，让 AI 调查通常只给玩家的异常"),
+		e("玩家可调查 AI 异常", "AI anomalies", "ai_anomalies", CatDebug, "3.0.0", "开关，让玩家调查通常只给 AI 的异常"),
 		e("设置星球标记", "Set planet flag", "effect set_planet_flag = titanic_life_can_build", CatDebug, "3.0.0", "换成目标标记 ID"),
 		e("清除事件标记", "Clear flag", "clearflag global prethoryn_invasion_happened", CatDebug, "3.0.0", "类型 标记 目标"),
 		e("爆裂银河重载", "Reload galaxy", "reload_galaxy", CatDebug, "3.0.0", "开始新游戏，破坏性"),

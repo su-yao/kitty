@@ -359,6 +359,8 @@ func (s *Store) decorate(e Entry) Entry {
 		e.TargetHint = "对玩家帝国全部领袖生效，无需选中单个领袖。"
 	case "add_psionic_aura_intensity 5":
 		e.TargetHint = "先选中目标星系。命令会改变该星系的灵能光环强度。"
+	case "finish_terraform":
+		e.TargetHint = "立刻完成全部进行中的环境改造，无需先选中星球。"
 	}
 	if e.Lore == "" {
 		e.Lore = loreFor(e)
@@ -502,7 +504,7 @@ func inferScope(cmd string) string {
 
 func planetScoped(cmd string) bool {
 	switch cmd {
-	case "finish_terraform", "control":
+	case "control":
 		return true
 	}
 	for _, p := range []string{
@@ -512,6 +514,7 @@ func planetScoped(cmd string) bool {
 		"effect add_district", "effect add_building",
 		"effect add_deposit", "effect remove_deposit",
 		"effect create_archaeological_site", "effect set_planet_flag",
+		"effect remove_modifier",
 	} {
 		if strings.HasPrefix(cmd, p) {
 			return true
@@ -670,7 +673,7 @@ var dlcByCommand = map[string]string{
 	"activate_ascension_perk ap_galactic_hyperthermia": "炼狱物种包",
 	"effect unlock_council_slots = 1": "至臻完人",
 	"advance_council_agenda":          "至臻完人",
-	"add_specimen random":             "博物天枢",
+	"add_specimen _random_":           "博物天枢",
 	"add_to_vivarium":                 "博物天枢",
 	"create_patron_relation patron_composer": "虚境幽影",
 	"max_patron_relation patron_composer":    "虚境幽影",
@@ -701,7 +704,7 @@ var dlcByCommand = map[string]string{
 	"research_technology tech_dyson_sphere":          "乌托邦",
 	"research_technology tech_ring_world":            "乌托邦",
 	"research_technology tech_habitat":               "乌托邦",
-	"planet_class pc_city":                           "启示录",
+	"planet_class pc_city":                           "寰宇企业",
 	"planet_class pc_hive":                           "乌托邦",
 	"planet_class pc_machine":                        "合成黎明",
 	"planet_class pc_ringworld_habitable":            "乌托邦",
@@ -710,6 +713,20 @@ var dlcByCommand = map[string]string{
 	"effect enrage_behemoth":                         "万物竞发",
 	"resource nanites 5000":                          "遥远繁星",
 	"add_relic r_galatron":                           "寰宇企业",
+	"federation_add_experience 1200":                 "联邦",
+	"federation_add_cohesion 200":                    "联邦",
+	"federation_add_cohesion_speed 10":               "联邦",
+	"federation_examine_leader":                      "联邦",
+	"skip_federation_cooldowns":                      "联邦",
+	"force_senate_vote":                              "联邦",
+	"end_senate_session":                             "联邦",
+	"skip_galactic_community_cooldowns":              "联邦",
+	"imperial_authority 50":                          "灭世天罚",
+	"skip_agreement_cooldowns":                       "四海皆臣",
+	"instant_specialization_conversion":              "四海皆臣",
+	"break_fleet_contract":                           "四海皆臣",
+	"complete_first_contact":                         "第一次接触",
+	"add_first_contact_clues 10":                     "第一次接触",
 }
 
 var dlcByEvent = map[string]string{
@@ -749,7 +766,7 @@ var dlcByEvent = map[string]string{
 	"origin.5605":                    "四海皆臣",
 	"syndaw.545":                     "合成黎明",
 	"fallen_machine_empire.1":        "合成黎明",
-	"galcom.16":                      "纵横捭阖",
+	"galcom.16":                      "联邦",
 	"action.99":                      "寰宇企业",
 	"marauder.500":                   "启示录",
 	"marauder.85":                    "启示录",

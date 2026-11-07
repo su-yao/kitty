@@ -631,6 +631,9 @@ func TestInferredScopes(t *testing.T) {
 		"skills 10":                              "",
 		"build_pops 10":                          "planet",
 		"grow_pops 10":                           "planet",
+		"finish_terraform":                       "",
+		"control":                                "planet",
+		"effect remove_modifier = holy_planet":   "planet",
 		"add_to_vivarium":                        "fleet",
 		"add_psionic_aura_intensity 5":           "system",
 		"spawn_astral_rift":                      "system",
@@ -720,6 +723,26 @@ func TestInferredScopes(t *testing.T) {
 			if !strings.Contains(e.TargetHint, "太空生物") {
 				t.Fatalf("vivarium hint should mention 太空生物: %q", e.TargetHint)
 			}
+		case "finish_terraform":
+			if strings.Contains(e.TargetHint, "选中玩家星球") {
+				t.Fatalf("finish_terraform should not ask to select a planet: %q", e.TargetHint)
+			}
+		case "human_anomalies_for_ai":
+			if !strings.Contains(e.Lore, "让 AI") {
+				t.Fatalf("human_anomalies_for_ai lore should mention AI getting player anomalies: %q", e.Lore)
+			}
+		case "ai_anomalies":
+			if !strings.Contains(e.Lore, "让玩家") {
+				t.Fatalf("ai_anomalies lore should mention the player getting AI anomalies: %q", e.Lore)
+			}
+		case "add_specimen _random_":
+			if e.Command != "add_specimen _random_" {
+				t.Fatalf("specimen command should be add_specimen _random_: %q", e.Command)
+			}
+		case "finish_research":
+			if strings.Contains(e.Lore, "同时完成特殊项目") {
+				t.Fatalf("finish_research should not claim to finish special projects: %q", e.Lore)
+			}
 		}
 		if e.Scope == "selected" && !strings.HasPrefix(e.Command, "add_ship ") &&
 			strings.Contains(e.TargetHint, "新对象会生成") {
@@ -806,13 +829,18 @@ func TestTargetModeAndDLC(t *testing.T) {
 		"activate_ascension_perk ap_mind_over_matter": "乌托邦",
 		"activate_ascension_perk ap_the_flesh_is_weak": "乌托邦",
 		"research_technology tech_dyson_sphere": "乌托邦",
-		"planet_class pc_city":                 "启示录",
+		"planet_class pc_city":                 "寰宇企业",
+		"add_specimen _random_":                "博物天枢",
+		"federation_examine_leader":            "联邦",
+		"force_senate_vote":                    "联邦",
+		"imperial_authority 50":                "灭世天罚",
+		"complete_first_contact":               "第一次接触",
 		"planet_class pc_hive":                 "乌托邦",
 		"planet_class pc_machine":              "合成黎明",
 		"resource nanites 5000":                "遥远繁星",
 		"add_relic r_galatron":                 "寰宇企业",
 		"event utopia.3308":                    "乌托邦",
-		"event galcom.16":                      "纵横捭阖",
+		"event galcom.16":                      "联邦",
 		"event syndaw.545":                     "合成黎明",
 		"event leviathans.1040":                "利维坦",
 		"event distar.1001":                    "遥远繁星",
@@ -892,6 +920,14 @@ func TestTargetModeAndDLC(t *testing.T) {
 	}
 	if strings.Contains(reclaimer.Items[0].Lore, "失落帝国泰坦") {
 		t.Fatalf("scavenger lore should not mention fallen empire titan: %q", reclaimer.Items[0].Lore)
+	}
+	spec := s.List(CatRelic, "随机标本", "4.5.0", 1, 10)
+	if spec.Total == 0 || spec.Items[0].Command != "add_specimen _random_" {
+		t.Fatalf("specimen command should be add_specimen _random_: %+v", spec.Items)
+	}
+	tf := s.List(CatPlanet, "完成环境改造", "4.5.0", 1, 10)
+	if tf.Total == 0 || tf.Items[0].Scope != "" {
+		t.Fatalf("finish_terraform should not require a selected planet: %+v", tf.Items)
 	}
 	col := s.List(CatPlanet, "殖民选中星球", "4.5.0", 1, 10)
 	if col.Total == 0 || col.Items[0].TargetMode != "" {

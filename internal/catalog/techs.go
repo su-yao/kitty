@@ -6,7 +6,7 @@ func techs() []Entry {
 		e("研究全部含天灾", "All techs crisis", "research_all_technologies 1", CatTech, "3.0.0", "含太空生物与天灾科技"),
 		e("循环科技 +5", "Repeatable techs", "research_all_technologies 1 5", CatTech, "3.0.0", "追加 5 层循环科技"),
 		e("刷新科技选项", "Reroll techs", "techupdate", CatTech, "3.0.0", ""),
-		e("完成当前研究", "Finish research", "finish_research", CatTech, "3.0.0", "同时完成特殊项目"),
+		e("完成当前研究", "Finish research", "finish_research", CatTech, "3.0.0", "完成进行中的研究，不含特殊项目"),
 		e("解锁全部传统", "All traditions", "activate_all_traditions", CatTech, "3.0.0", ""),
 		e("解锁指定传统", "Activate tradition", "activate_tradition tr_prosperity_sct", CatTech, "3.0.0", "含树采纳，换传统 ID"),
 		e("解锁泰坦科技", "Tech Titans", "research_technology tech_titans", CatTech, "3.0.0", ""),
@@ -40,7 +40,7 @@ func techs() []Entry {
 		e("解锁灵能权威", "Psionic authority", "event shroud.20", CatTech, "4.3.0", "虚境幽影 灵能权威"),
 		e("添加强国理念", "Add civic", "effect force_add_civic = civic_meritocracy", CatTech, "3.0.0", "换 ID 可加任意理念/起源"),
 		e("移除强国理念", "Remove civic", "effect force_remove_civic = civic_meritocracy", CatTech, "3.0.0", "未选中任何对象时生效"),
-		e("解锁议会席位", "Unlock council slot", "effect unlock_council_slots = 1", CatTech, "3.10.0", "至臻完人 DLC"),
+		e("解锁议会席位", "Unlock council slot", "effect unlock_council_slots = 1", CatTech, "3.8.0", "至臻完人 DLC"),
 		e("完成议会议程", "Advance council agenda", "advance_council_agenda", CatTech, "3.8.0", "至臻完人，空参数立刻完成当前议程"),
 		e("领袖技能 +10", "Skills +10", "skills 10", CatTech, "3.0.0", "给玩家全部领袖加 10 级"),
 		e("招募全部领袖", "Hire all leaders", "hire_all_leaders", CatTech, "3.0.0", ""),
@@ -72,6 +72,6 @@ func relics() []Entry {
 		e("孤立肃正核心遗珍", "Isolated Contingency Core", "add_relic r_isolated_contingency_core", CatRelic, "3.0.0", ""),
 		e("塞塔娜之心遗珍", "Cetana's Heart", "add_relic r_cetanas_heart", CatRelic, "3.12.0", "合成女王"),
 		e("启动无形者遗珍", "Activate Unbidden Relic", "activate_relic r_unbidden_warlock", CatRelic, "3.0.0", ""),
-		e("随机标本", "Random specimen", "add_specimen random", CatRelic, "3.12.0", "博物天枢 DLC"),
+		e("随机标本", "Random specimen", "add_specimen _random_", CatRelic, "3.14.0", "博物天枢 DLC，参数是 _random_"),
 	}
 }
