@@ -28,7 +28,7 @@ const (
 )
 
 // appVersion can be overridden at build time with -X main.appVersion=...
-var appVersion = "1.4.5"
+var appVersion = "1.4.6"
 
 // silentMode suppresses interactive "press enter" prompts, which would hang
 // unattended installs launched with /S.
@@ -170,7 +170,6 @@ func runInstall(opts installOpts) error {
 	}
 	fmt.Println("正在结束已运行的面板...")
 	terminateApp()
-	time.Sleep(300 * time.Millisecond)
 	fmt.Println("正在复制文件...")
 	n, err := extractPayload(opts.Dest)
 	if err != nil {
@@ -249,14 +248,16 @@ func runUninstall(opts installOpts) error {
 		}
 	}
 	terminateApp()
-	time.Sleep(300 * time.Millisecond)
 	removeShortcut(startMenuDir(), shortcutApp)
 	removeShortcut(startMenuDir(), shortcutUninst)
 	removeShortcut(startMenuDir(), appNameZH+".lnk")
 	removeShortcut(startMenuDir(), "卸载 "+appNameZH+".lnk")
+	removeShortcut(legacyStartMenuDir(), shortcutApp)
+	removeShortcut(legacyStartMenuDir(), shortcutUninst)
 	removeShortcut(legacyStartMenuDir(), appNameZH+".lnk")
 	removeShortcut(legacyStartMenuDir(), "卸载 "+appNameZH+".lnk")
 	removeShortcut(desktopDir(), shortcutApp)
+	removeShortcut(desktopDir(), shortcutUninst)
 	removeShortcut(desktopDir(), appNameZH+".lnk")
 	_ = deleteUninstallKey()
 	_ = os.Remove(filepath.Join(dest, installMetaName))
@@ -298,7 +299,7 @@ func extractPayload(dest string) (int, error) {
 		if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
 			return err
 		}
-		if err := os.WriteFile(target, b, 0755); err != nil {
+		if err := writeFileRetry(target, b, 0755); err != nil {
 			return err
 		}
 		n++
@@ -426,6 +427,19 @@ func reservedWinName(name string) bool {
 	return false
 }
 
+func writeFileRetry(path string, data []byte, mode os.FileMode) error {
+	var err error
+	for i := 0; i < 8; i++ {
+		err = os.WriteFile(path, data, mode)
+		if err == nil {
+			return nil
+		}
+		terminateApp()
+		time.Sleep(time.Duration(150*(i+1)) * time.Millisecond)
+	}
+	return err
+}
+
 func copyFile(src, dst string) error {
 	if same, _ := filepath.Abs(src); same != "" {
 		if other, err := filepath.Abs(dst); err == nil && strings.EqualFold(same, other) {
@@ -440,13 +454,26 @@ func copyFile(src, dst string) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
 		return err
 	}
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
+	var last error
+	for i := 0; i < 8; i++ {
+		out, err := os.Create(dst)
+		if err != nil {
+			last = err
+			terminateApp()
+			time.Sleep(time.Duration(150*(i+1)) * time.Millisecond)
+			continue
+		}
+		_, err = io.Copy(out, in)
+		_ = out.Close()
+		if err == nil {
+			return nil
+		}
+		last = err
+		terminateApp()
+		time.Sleep(time.Duration(150*(i+1)) * time.Millisecond)
+		_, _ = in.Seek(0, io.SeekStart)
 	}
-	defer out.Close()
-	_, err = io.Copy(out, in)
-	return err
+	return last
 }
 
 func readLine(in *bufio.Reader) string {
@@ -470,6 +497,21 @@ func askYes(in *bufio.Reader, q string, def bool) bool {
 		return def
 	}
 	return s == "y" || s == "yes"
+}
+
+func versionPart(v string, idx int) uint32 {
+	parts := strings.Split(v, ".")
+	if idx < 0 || idx >= len(parts) {
+		return 0
+	}
+	var n uint32
+	for _, c := range parts[idx] {
+		if c < '0' || c > '9' {
+			break
+		}
+		n = n*10 + uint32(c-'0')
+	}
+	return n
 }
 
 func tryRemoveDir(dir string) error {

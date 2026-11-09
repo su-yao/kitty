@@ -172,6 +172,21 @@ func TestSecureHeaders(t *testing.T) {
 	}
 }
 
+func TestFirstExisting(t *testing.T) {
+	dir := t.TempDir()
+	a := filepath.Join(dir, "a.exe")
+	b := filepath.Join(dir, "b.exe")
+	if err := os.WriteFile(b, []byte("x"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if got := firstExisting("", a, b); got != b {
+		t.Fatalf("got %q want %q", got, b)
+	}
+	if got := firstExisting(a, filepath.Join(dir, "missing")); got != "" {
+		t.Fatalf("want empty, got %q", got)
+	}
+}
+
 func TestEmbeddedWebMatchesSource(t *testing.T) {
 	for _, name := range []string{"index.html", "app.css", "app.js"} {
 		got, err := webFS.ReadFile("web/" + name)

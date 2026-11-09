@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -74,6 +75,59 @@ func TestSafeRelPath(t *testing.T) {
 	got, ok = safeRelPath("StellarisConsolePanel.exe")
 	if !ok || got != "StellarisConsolePanel.exe" {
 		t.Fatalf("exe path: %q %v", got, ok)
+	}
+}
+
+func TestWriteFileRetry(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "out.bin")
+	if err := writeFileRetry(p, []byte("ok"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != "ok" {
+		t.Fatalf("got %q", b)
+	}
+	if err := writeFileRetry(p, []byte("two"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	b, err = os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != "two" {
+		t.Fatalf("overwrite got %q", b)
+	}
+}
+
+func TestCopyFile(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src.bin")
+	dst := filepath.Join(dir, "dst.bin")
+	if err := os.WriteFile(src, []byte("payload"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := copyFile(src, dst); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(dst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != "payload" {
+		t.Fatalf("got %q", b)
+	}
+}
+
+func TestVersionPart(t *testing.T) {
+	if versionPart("1.4.6", 0) != 1 || versionPart("1.4.6", 1) != 4 || versionPart("1.4.6", 2) != 6 {
+		t.Fatalf("versionPart 1.4.6 -> %d.%d.%d", versionPart("1.4.6", 0), versionPart("1.4.6", 1), versionPart("1.4.6", 2))
+	}
+	if versionPart("1.4.6", 3) != 0 || versionPart("", 0) != 0 {
+		t.Fatal("versionPart bounds")
 	}
 }
 

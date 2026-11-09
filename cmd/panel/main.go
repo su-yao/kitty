@@ -479,16 +479,38 @@ func or(a, b string) string {
 	return a
 }
 
+func firstExisting(paths ...string) string {
+	for _, p := range paths {
+		if p == "" {
+			continue
+		}
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	return ""
+}
+
 func openUI(url string) {
 	if runtime.GOOS == "windows" {
-		msedge := filepath.Join(os.Getenv("ProgramFiles(x86)"), "Microsoft", "Edge", "Application", "msedge.exe")
-		if _, err := os.Stat(msedge); err == nil {
-			_ = exec.Command(msedge, "--app="+url, "--start-maximized", "--window-size=1600,900").Start()
+		pf := os.Getenv("ProgramFiles")
+		pf86 := os.Getenv("ProgramFiles(x86)")
+		local := os.Getenv("LOCALAPPDATA")
+		edge := firstExisting(
+			filepath.Join(pf, "Microsoft", "Edge", "Application", "msedge.exe"),
+			filepath.Join(pf86, "Microsoft", "Edge", "Application", "msedge.exe"),
+		)
+		if edge != "" {
+			_ = exec.Command(edge, "--app="+url, "--start-maximized").Start()
 			return
 		}
-		chrome := filepath.Join(os.Getenv("ProgramFiles"), "Google", "Chrome", "Application", "chrome.exe")
-		if _, err := os.Stat(chrome); err == nil {
-			_ = exec.Command(chrome, "--app="+url, "--start-maximized", "--window-size=1600,900").Start()
+		chrome := firstExisting(
+			filepath.Join(pf, "Google", "Chrome", "Application", "chrome.exe"),
+			filepath.Join(pf86, "Google", "Chrome", "Application", "chrome.exe"),
+			filepath.Join(local, "Google", "Chrome", "Application", "chrome.exe"),
+		)
+		if chrome != "" {
+			_ = exec.Command(chrome, "--app="+url, "--start-maximized").Start()
 			return
 		}
 		_ = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()

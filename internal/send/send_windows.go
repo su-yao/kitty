@@ -66,7 +66,8 @@ const (
 	SC_V                  = 0x2F
 	SC_2                  = 0x03
 	SC_3                  = 0x04
-	SC_1                  = 0x02
+	SC_NUMPAD1            = 0x4F
+	SC_NUMPAD2            = 0x50
 	SC_F12                = 0x58
 	SC_LALT               = 0x38
 	SC_C                  = 0x2E
@@ -298,7 +299,7 @@ func openConsole(key string) {
 	case "shift+3", "§", "section":
 		tapComboScan(SC_LSHIFT, SC_3)
 	case "alt+21", "alt+2+1":
-		tapComboScan2(SC_LALT, SC_2, SC_1)
+		tapComboScan2(SC_LALT, SC_NUMPAD2, SC_NUMPAD1)
 	case "shift+alt+c":
 		tapComboScanMods(SC_LSHIFT, SC_LALT, SC_C)
 	case "f12":

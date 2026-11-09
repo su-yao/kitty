@@ -22,13 +22,16 @@ func createShortcut(dir, name, target, workDir, desc string) error {
 		"$s=(New-Object -ComObject WScript.Shell).CreateShortcut(%s); $s.TargetPath=%s; $s.WorkingDirectory=%s; $s.Description=%s; $s.IconLocation=%s; $s.WindowStyle=1; $s.Save()",
 		psQuote(lnk), psQuote(target), psQuote(workDir), psQuote(desc), psQuote(target+",0"),
 	)
-	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", ps)
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-STA", "-ExecutionPolicy", "Bypass", "-Command", ps)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	if out, err := cmd.CombinedOutput(); err != nil {
 		if e2 := writeURLShortcut(lnk, target); e2 == nil {
 			return nil
 		}
 		return fmt.Errorf("快捷方式失败: %v %s", err, strings.TrimSpace(string(out)))
+	}
+	if strings.HasSuffix(strings.ToLower(name), ".lnk") {
+		_ = os.Remove(filepath.Join(dir, name[:len(name)-4]+".url"))
 	}
 	return nil
 }
@@ -42,8 +45,15 @@ func writeURLShortcut(path, target string) error {
 	if strings.HasSuffix(strings.ToLower(urlPath), ".lnk") {
 		urlPath = urlPath[:len(urlPath)-4] + ".url"
 	}
-	t := strings.ReplaceAll(target, `\`, `/`)
-	body := "[InternetShortcut]\r\nURL=file:///" + t + "\r\n"
+	abs, err := filepath.Abs(target)
+	if err != nil {
+		abs = target
+	}
+	t := strings.ReplaceAll(abs, `\`, "/")
+	if !strings.HasPrefix(strings.ToLower(t), "file:") {
+		t = "file:///" + t
+	}
+	body := "[InternetShortcut]\r\nURL=" + t + "\r\nIconFile=" + abs + "\r\nIconIndex=0\r\n"
 	return os.WriteFile(urlPath, []byte(body), 0644)
 }
 
@@ -76,6 +86,8 @@ func writeUninstallKey(dest, uninst string) error {
 		k.setDWORD("NoModify", 1),
 		k.setDWORD("NoRepair", 1),
 		k.setDWORD("EstimatedSize", uint32(size)),
+		k.setDWORD("VersionMajor", versionPart(appVersion, 0)),
+		k.setDWORD("VersionMinor", versionPart(appVersion, 1)),
 		k.setString("InstallDate", time.Now().Format("20060102")),
 	}
 	for _, err := range vals {
@@ -98,6 +110,14 @@ func terminateApp() {
 	cmd := exec.Command(taskkill, "/F", "/IM", exeName)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	_ = cmd.Run()
+	for i := 0; i < 10; i++ {
+		time.Sleep(120 * time.Millisecond)
+		check := exec.Command(taskkill, "/F", "/IM", exeName)
+		check.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		if err := check.Run(); err != nil {
+			return
+		}
+	}
 }
 
 func selfDelete(dest string) {

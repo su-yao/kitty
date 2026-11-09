@@ -46,6 +46,8 @@ function tileMin(profile, scale) {
 function fitGrid() {
   const info = detectProfile();
   const grid = $("grid");
+  document.documentElement.dataset.profile = info.profile;
+  document.documentElement.dataset.scale = String(info.scale);
   const min = tileMin(info.profile, info.scale);
   const cs = getComputedStyle(document.documentElement);
   const gap = parseFloat(cs.getPropertyValue("--gap")) || 8;
@@ -65,8 +67,6 @@ function fitGrid() {
   state.pageSize = pageSize;
   state.profile = info.profile;
   state.scale = info.scale;
-  document.documentElement.dataset.profile = info.profile;
-  document.documentElement.dataset.scale = String(info.scale);
   grid.style.setProperty("--cols", String(cols));
   grid.style.setProperty("--rows", String(rows));
   return { changed, info, cols, rows, pageSize };
@@ -485,7 +485,7 @@ $("btnAdminHint").addEventListener("click", () => {
 });
 
 let resizeTimer = 0;
-window.addEventListener("resize", () => {
+function onViewportChange() {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
     const before = state.pageSize;
@@ -495,6 +495,14 @@ window.addEventListener("resize", () => {
       loadList().catch((e) => setStatus(e.message, true));
     }
   }, 120);
-});
+}
+window.addEventListener("resize", onViewportChange);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", onViewportChange);
+}
+if (window.matchMedia) {
+  const dprChange = window.matchMedia("(min-resolution: 1.35dppx)");
+  if (dprChange.addEventListener) dprChange.addEventListener("change", onViewportChange);
+}
 
 loadMeta().then(loadList).catch((e) => setStatus(e.message, true));
