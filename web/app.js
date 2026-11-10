@@ -505,4 +505,19 @@ if (window.matchMedia) {
   if (dprChange.addEventListener) dprChange.addEventListener("change", onViewportChange);
 }
 
+function applyTheme(theme) {
+  const t = theme === "dark" ? "dark" : "light";
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem("stellaris-panel-theme", t); } catch (e) {}
+  const sel = $("theme");
+  if (sel && sel.value !== t) sel.value = t;
+}
+
+(function initTheme() {
+  let t = "light";
+  try { t = localStorage.getItem("stellaris-panel-theme") || "light"; } catch (e) {}
+  applyTheme(t);
+  $("theme").addEventListener("change", () => applyTheme($("theme").value));
+})();
+
 loadMeta().then(loadList).catch((e) => setStatus(e.message, true));
