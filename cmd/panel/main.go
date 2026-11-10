@@ -286,8 +286,10 @@ func (a *App) openConsole(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		ConsoleKey string `json:"console_key"`
 	}
-	if r.Body != nil {
-		_ = json.NewDecoder(r.Body).Decode(&body)
+	r.Body = http.MaxBytesReader(w, r.Body, 8<<10)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		httpError(w, 400, err.Error())
+		return
 	}
 	key := body.ConsoleKey
 	if key == "" {
@@ -333,15 +335,16 @@ func (a *App) scanNow(w http.ResponseWriter, r *http.Request) {
 		DesignsVerified: report.DesignsVerified,
 	})
 	a.store.ReplaceScanned(report.Entries)
+	n := a.store.ScannedCount()
 	missing := ""
 	if report.EventsVerified || report.DesignsVerified {
 		missing = "，可用性已按当前游戏文件校验"
 	}
 	writeJSON(w, map[string]any{
 		"ok":      true,
-		"count":   len(report.Entries),
+		"count":   n,
 		"version": ver,
-		"message": "扫描完成 " + strconv.Itoa(len(report.Entries)) + " 条，检测到版本 " + or(ver, "未知") + missing,
+		"message": "扫描完成 " + strconv.Itoa(n) + " 条，检测到版本 " + or(ver, "未知") + missing,
 	})
 }
 
@@ -499,6 +502,7 @@ func openUI(url string) {
 		edge := firstExisting(
 			filepath.Join(pf, "Microsoft", "Edge", "Application", "msedge.exe"),
 			filepath.Join(pf86, "Microsoft", "Edge", "Application", "msedge.exe"),
+			filepath.Join(local, "Microsoft", "Edge", "Application", "msedge.exe"),
 		)
 		if edge != "" {
 			_ = exec.Command(edge, "--app="+url, "--start-maximized").Start()

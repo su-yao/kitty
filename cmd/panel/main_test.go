@@ -149,6 +149,17 @@ func TestAPIMethodGuard(t *testing.T) {
 	}
 }
 
+func TestOpenConsoleRejectsBadJSON(t *testing.T) {
+	a := &App{store: catalog.New(), set: Settings{Version: catalog.DefaultVersion, ConsoleKey: "oem3"}}
+	req := httptest.NewRequest(http.MethodPost, "http://127.0.0.1/api/open_console", strings.NewReader("not-json"))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	a.openConsole(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("want 400, got %d", rec.Code)
+	}
+}
+
 func TestNeedsJSONBody(t *testing.T) {
 	for _, p := range []string{"/api/send", "/api/open_console", "/api/settings", "/api/scan"} {
 		if !needsJSONBody(p) {

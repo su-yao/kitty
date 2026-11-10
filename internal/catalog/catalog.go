@@ -275,14 +275,12 @@ func (s *Store) ListFiltered(category, query, version string, page, pageSize int
 
 func (s *Store) decorate(e Entry) Entry {
 	if e.Source == "vanilla" {
-		if e.Category == CatEvent {
-			if id, ok := eventID(e.Command); ok {
-				if sc, found := s.hints.EventScopes[id]; found {
-					e.Scope = sc
-				}
-				if s.hints.EventsVerified && !s.hints.EventIDs[id] {
-					e.Missing = true
-				}
+		if id, ok := eventID(e.Command); ok {
+			if sc, found := s.hints.EventScopes[id]; found {
+				e.Scope = sc
+			}
+			if s.hints.EventsVerified && !s.hints.EventIDs[id] {
+				e.Missing = true
 			}
 		}
 		if name, ok := shipDesign(e.Command); ok {

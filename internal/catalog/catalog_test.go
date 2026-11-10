@@ -207,6 +207,19 @@ func TestHintsMarkMissing(t *testing.T) {
 			t.Fatal("unknown design should be marked missing")
 		}
 	}
+	page = s.List(CatTech, "解锁义体权威", "4.5.0", 1, 10)
+	if page.Total != 1 || !page.Items[0].Missing {
+		t.Fatal("tech-category event should be verified against game files")
+	}
+	s.SetHints(Hints{
+		EventIDs:       map[string]bool{"cyber.1505": true},
+		EventScopes:    map[string]string{"cyber.1505": "country"},
+		EventsVerified: true,
+	})
+	page = s.List(CatTech, "解锁义体权威", "4.5.0", 1, 10)
+	if page.Total != 1 || page.Items[0].Missing {
+		t.Fatal("known tech-category event should stay available")
+	}
 }
 
 func TestListFilteredHidesMissing(t *testing.T) {

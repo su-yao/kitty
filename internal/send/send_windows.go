@@ -66,36 +66,10 @@ const (
 	SC_V                  = 0x2F
 	SC_2                  = 0x03
 	SC_3                  = 0x04
-	SC_NUMPAD1            = 0x4F
-	SC_NUMPAD2            = 0x50
 	SC_F12                = 0x58
 	SC_LALT               = 0x38
 	SC_C                  = 0x2E
 )
-
-var usScan = map[rune]uint16{
-	'1': 0x02, '2': 0x03, '3': 0x04, '4': 0x05, '5': 0x06,
-	'6': 0x07, '7': 0x08, '8': 0x09, '9': 0x0A, '0': 0x0B,
-	'q': 0x10, 'w': 0x11, 'e': 0x12, 'r': 0x13, 't': 0x14,
-	'y': 0x15, 'u': 0x16, 'i': 0x17, 'o': 0x18, 'p': 0x19,
-	'a': 0x1E, 's': 0x1F, 'd': 0x20, 'f': 0x21, 'g': 0x22,
-	'h': 0x23, 'j': 0x24, 'k': 0x25, 'l': 0x26,
-	'z': 0x2C, 'x': 0x2D, 'c': 0x2E, 'v': 0x2F, 'b': 0x30,
-	'n': 0x31, 'm': 0x32,
-	'-': 0x0C, '=': 0x0D, '[': 0x1A, ']': 0x1B,
-	';': 0x27, '\'': 0x28, '`': 0x29, '\\': 0x2B,
-	',': 0x33, '.': 0x34, '/': 0x35, ' ': 0x39,
-}
-
-// usScanShift maps characters that require Shift on a US layout, so commands
-// containing braces or comparison operators can be typed directly instead of
-// falling back to the clipboard.
-var usScanShift = map[rune]uint16{
-	'~': 0x29, '!': 0x02, '@': 0x03, '#': 0x04, '$': 0x05, '%': 0x06,
-	'^': 0x07, '&': 0x08, '*': 0x09, '(': 0x0A, ')': 0x0B,
-	'_': 0x0C, '+': 0x0D, '{': 0x1A, '}': 0x1B, ':': 0x27, '"': 0x28,
-	'|': 0x2B, '<': 0x33, '>': 0x34, '?': 0x35,
-}
 
 type Options struct {
 	ConsoleKey string
@@ -157,7 +131,9 @@ func Send(command string, opt Options) error {
 	}
 	time.Sleep(d)
 	if !opt.SkipOpen {
-		openConsole(opt.ConsoleKey)
+		if err := openConsole(opt.ConsoleKey); err != nil {
+			return err
+		}
 		time.Sleep(d)
 	}
 	// Decide the transport before typing anything. Switching to the clipboard
@@ -173,8 +149,7 @@ func Send(command string, opt Options) error {
 		}
 	}
 	time.Sleep(60 * time.Millisecond)
-	tapScan(SC_ENTER)
-	return nil
+	return tapScan(SC_ENTER)
 }
 
 func FindStellaris() (string, error) {
@@ -191,8 +166,7 @@ func OpenConsole(key string) error {
 		return fmt.Errorf("无法激活窗口 %s: %w", title, err)
 	}
 	time.Sleep(200 * time.Millisecond)
-	openConsole(key)
-	return nil
+	return openConsole(key)
 }
 
 func findStellaris() (uintptr, string, error) {
@@ -289,102 +263,140 @@ func focus(hwnd uintptr) error {
 	return errors.New("窗口未能置前，请先点一下群星画面再点按钮")
 }
 
-func openConsole(key string) {
+func openConsole(key string) error {
 	k := strings.ToLower(strings.TrimSpace(key))
 	switch k {
 	case "oem3", "~", "`", "tilde", "^", "caret", "°", "degree", "²", "squared", "":
-		tapScan(SC_GRAVE)
+		return tapScan(SC_GRAVE)
 	case "shift+2":
-		tapComboScan(SC_LSHIFT, SC_2)
+		return tapComboScan(SC_LSHIFT, SC_2)
 	case "shift+3", "§", "section":
-		tapComboScan(SC_LSHIFT, SC_3)
+		return tapComboScan(SC_LSHIFT, SC_3)
 	case "alt+21", "alt+2+1":
-		tapComboScan2(SC_LALT, SC_NUMPAD2, SC_NUMPAD1)
+		return tapAltNumpad(VK_NUMPAD2, VK_NUMPAD1)
 	case "shift+alt+c":
-		tapComboScanMods(SC_LSHIFT, SC_LALT, SC_C)
+		return tapComboScanMods(SC_LSHIFT, SC_LALT, SC_C)
 	case "f12":
-		tapScan(SC_F12)
+		return tapScan(SC_F12)
 	default:
-		tapScan(SC_GRAVE)
+		return tapScan(SC_GRAVE)
 	}
 }
 
-func sendScan(scan uint16, up bool) {
+func sendInput(in kbdInput) error {
+	n, _, err := procSendInput.Call(1, uintptr(unsafe.Pointer(&in)), unsafe.Sizeof(in))
+	if n != 1 {
+		if err == nil || err == syscall.Errno(0) {
+			return errors.New("SendInput 失败")
+		}
+		return err
+	}
+	return nil
+}
+
+func sendScan(scan uint16, up bool) error {
 	flags := uint32(KEYEVENTF_SCANCODE)
 	if up {
 		flags |= KEYEVENTF_KEYUP
 	}
-	in := kbdInput{Type: INPUT_KEYBOARD, Scan: scan, Flags: flags}
-	procSendInput.Call(1, uintptr(unsafe.Pointer(&in)), unsafe.Sizeof(in))
+	return sendInput(kbdInput{Type: INPUT_KEYBOARD, Scan: scan, Flags: flags})
 }
 
-func tapScan(scan uint16) {
-	sendScan(scan, false)
-	time.Sleep(18 * time.Millisecond)
-	sendScan(scan, true)
-	time.Sleep(18 * time.Millisecond)
-}
-
-func tapComboScan2(mod, k1, k2 uint16) {
-	sendScan(mod, false)
-	time.Sleep(12 * time.Millisecond)
-	sendScan(k1, false)
-	time.Sleep(18 * time.Millisecond)
-	sendScan(k1, true)
-	time.Sleep(12 * time.Millisecond)
-	sendScan(k2, false)
-	time.Sleep(18 * time.Millisecond)
-	sendScan(k2, true)
-	sendScan(mod, true)
-	time.Sleep(18 * time.Millisecond)
-}
-
-func tapComboScanMods(mod1, mod2, key uint16) {
-	sendScan(mod1, false)
-	time.Sleep(12 * time.Millisecond)
-	sendScan(mod2, false)
-	time.Sleep(12 * time.Millisecond)
-	sendScan(key, false)
-	time.Sleep(18 * time.Millisecond)
-	sendScan(key, true)
-	sendScan(mod2, true)
-	sendScan(mod1, true)
-	time.Sleep(18 * time.Millisecond)
-}
-
-func tapComboScan(mod, key uint16) {
-	sendScan(mod, false)
-	time.Sleep(12 * time.Millisecond)
-	sendScan(key, false)
-	time.Sleep(18 * time.Millisecond)
-	sendScan(key, true)
-	sendScan(mod, true)
-	time.Sleep(18 * time.Millisecond)
-}
-
-func canTypeASCII(s string) bool {
-	for _, r := range s {
-		if _, ok := usScanShift[r]; ok {
-			continue
-		}
-		if r >= 'A' && r <= 'Z' {
-			_, ok := usScan[r-'A'+'a']
-			if !ok {
-				return false
-			}
-			continue
-		}
-		if _, ok := usScan[r]; !ok {
-			return false
-		}
+func sendVK(vk uint16, up bool) error {
+	flags := uint32(0)
+	if up {
+		flags = KEYEVENTF_KEYUP
 	}
-	return true
+	return sendInput(kbdInput{Type: INPUT_KEYBOARD, Vk: vk, Flags: flags})
+}
+
+func tapScan(scan uint16) error {
+	if err := sendScan(scan, false); err != nil {
+		return err
+	}
+	time.Sleep(18 * time.Millisecond)
+	if err := sendScan(scan, true); err != nil {
+		return err
+	}
+	time.Sleep(18 * time.Millisecond)
+	return nil
+}
+
+func tapAltNumpad(keys ...uint16) error {
+	if err := sendVK(VK_MENU, false); err != nil {
+		return err
+	}
+	time.Sleep(12 * time.Millisecond)
+	for _, vk := range keys {
+		if err := sendVK(vk, false); err != nil {
+			_ = sendVK(VK_MENU, true)
+			return err
+		}
+		time.Sleep(18 * time.Millisecond)
+		if err := sendVK(vk, true); err != nil {
+			_ = sendVK(VK_MENU, true)
+			return err
+		}
+		time.Sleep(12 * time.Millisecond)
+	}
+	if err := sendVK(VK_MENU, true); err != nil {
+		return err
+	}
+	time.Sleep(18 * time.Millisecond)
+	return nil
+}
+
+func tapComboScanMods(mod1, mod2, key uint16) error {
+	if err := sendScan(mod1, false); err != nil {
+		return err
+	}
+	time.Sleep(12 * time.Millisecond)
+	if err := sendScan(mod2, false); err != nil {
+		return err
+	}
+	time.Sleep(12 * time.Millisecond)
+	if err := sendScan(key, false); err != nil {
+		return err
+	}
+	time.Sleep(18 * time.Millisecond)
+	if err := sendScan(key, true); err != nil {
+		return err
+	}
+	if err := sendScan(mod2, true); err != nil {
+		return err
+	}
+	if err := sendScan(mod1, true); err != nil {
+		return err
+	}
+	time.Sleep(18 * time.Millisecond)
+	return nil
+}
+
+func tapComboScan(mod, key uint16) error {
+	if err := sendScan(mod, false); err != nil {
+		return err
+	}
+	time.Sleep(12 * time.Millisecond)
+	if err := sendScan(key, false); err != nil {
+		return err
+	}
+	time.Sleep(18 * time.Millisecond)
+	if err := sendScan(key, true); err != nil {
+		return err
+	}
+	if err := sendScan(mod, true); err != nil {
+		return err
+	}
+	time.Sleep(18 * time.Millisecond)
+	return nil
 }
 
 func typeASCII(s string) error {
 	for _, r := range s {
 		if sc, ok := usScanShift[r]; ok {
-			tapComboScan(SC_LSHIFT, sc)
+			if err := tapComboScan(SC_LSHIFT, sc); err != nil {
+				return err
+			}
 			continue
 		}
 		if r >= 'A' && r <= 'Z' {
@@ -392,14 +404,18 @@ func typeASCII(s string) error {
 			if !ok {
 				return fmt.Errorf("无法输入 %q", r)
 			}
-			tapComboScan(SC_LSHIFT, sc)
+			if err := tapComboScan(SC_LSHIFT, sc); err != nil {
+				return err
+			}
 			continue
 		}
 		sc, ok := usScan[r]
 		if !ok {
 			return fmt.Errorf("无法输入 %q", r)
 		}
-		tapScan(sc)
+		if err := tapScan(sc); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -408,7 +424,9 @@ func pasteClipboard(s string) error {
 	if err := setClipboard(s); err != nil {
 		return err
 	}
-	tapComboScan(SC_LCTRL, SC_V)
+	if err := tapComboScan(SC_LCTRL, SC_V); err != nil {
+		return err
+	}
 	time.Sleep(80 * time.Millisecond)
 	return nil
 }
