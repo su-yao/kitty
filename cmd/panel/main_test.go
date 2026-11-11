@@ -178,8 +178,12 @@ func TestSecureHeaders(t *testing.T) {
 	if rec.Header().Get("X-Content-Type-Options") != "nosniff" {
 		t.Fatal("missing nosniff")
 	}
-	if rec.Header().Get("Content-Security-Policy") == "" {
+	csp := rec.Header().Get("Content-Security-Policy")
+	if csp == "" {
 		t.Fatal("missing CSP")
+	}
+	if strings.Contains(csp, "unsafe-inline") {
+		t.Fatal("CSP must not allow inline scripts")
 	}
 }
 
@@ -198,8 +202,30 @@ func TestFirstExisting(t *testing.T) {
 	}
 }
 
+func TestScanRejectsBadJSON(t *testing.T) {
+	a := &App{store: catalog.New(), set: Settings{Version: catalog.DefaultVersion, ConsoleKey: "oem3"}}
+	req := httptest.NewRequest(http.MethodPost, "http://127.0.0.1/api/scan", strings.NewReader("not-json"))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	a.scanNow(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("want 400, got %d", rec.Code)
+	}
+}
+
+func TestScanRequiresDirs(t *testing.T) {
+	a := &App{store: catalog.New(), set: Settings{Version: catalog.DefaultVersion, ConsoleKey: "oem3"}}
+	req := httptest.NewRequest(http.MethodPost, "http://127.0.0.1/api/scan", strings.NewReader("{}"))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	a.scanNow(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("want 400, got %d", rec.Code)
+	}
+}
+
 func TestEmbeddedWebMatchesSource(t *testing.T) {
-	for _, name := range []string{"index.html", "app.css", "app.js"} {
+	for _, name := range []string{"index.html", "app.css", "app.js", "theme.js"} {
 		got, err := webFS.ReadFile("web/" + name)
 		if err != nil {
 			t.Fatalf("embedded %s: %v", name, err)

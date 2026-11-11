@@ -4,14 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>群星控制台面板</title>
-  <script>
-    (function () {
-      var t = "light";
-      try { t = localStorage.getItem("stellaris-panel-theme") || "light"; } catch (e) {}
-      if (t !== "dark") t = "light";
-      document.documentElement.setAttribute("data-theme", t);
-    })();
-  </script>
+  <script src="/static/theme.js"></script>
   <link rel="stylesheet" href="/static/app.css" />
 </head>
 <body>

@@ -139,7 +139,7 @@ async function loadList() {
     const b = document.createElement("button");
     b.className = "cmd" + (item.missing ? " missing" : "");
     const tags = [];
-    if (item.scope && item.scope !== "country") tags.push(`<i class="tag">${scopeLabel(item.scope)}</i>`);
+    if (item.scope && item.scope !== "country") tags.push(`<i class="tag">${escapeHtml(scopeLabel(item.scope))}</i>`);
     if (item.pre_commands && item.pre_commands.length) tags.push(`<i class="tag">含前置</i>`);
     if (item.dlc) tags.push(`<i class="tag dlc">${escapeHtml(item.dlc)}</i>`);
     if (item.missing) tags.push(`<i class="tag miss">未找到</i>`);
@@ -474,6 +474,13 @@ $("btnScan").addEventListener("click", async () => {
       body: "{}",
     });
     setStatus(data.message || "扫描完成");
+    if (data.version) {
+      const opt = Array.from($("version").options).find((o) => o.value === data.version);
+      if (opt) {
+        $("version").value = data.version;
+        state.version = data.version;
+      }
+    }
     state.page = 1;
     await loadList();
   } catch (e) {

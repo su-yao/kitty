@@ -313,6 +313,12 @@ func (a *App) scanNow(w http.ResponseWriter, r *http.Request) {
 		httpError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 8<<10)
+	var body struct{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		httpError(w, 400, err.Error())
+		return
+	}
 	s := a.snapSettings()
 	if s.GameRoot == "" && s.Workshop == "" && s.ExtraMods == "" {
 		httpError(w, 400, "请至少填写游戏根目录或 MOD 目录")
@@ -335,6 +341,14 @@ func (a *App) scanNow(w http.ResponseWriter, r *http.Request) {
 		DesignsVerified: report.DesignsVerified,
 	})
 	a.store.ReplaceScanned(report.Entries)
+	if ver != "" && validVersion(ver) && ver != s.Version {
+		s.Version = ver
+		if err := saveSettings(s); err == nil {
+			a.mu.Lock()
+			a.set = s
+			a.mu.Unlock()
+		}
+	}
 	n := a.store.ScannedCount()
 	missing := ""
 	if report.EventsVerified || report.DesignsVerified {
